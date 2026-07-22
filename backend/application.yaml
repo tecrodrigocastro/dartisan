@@ -7,7 +7,7 @@ openapi:
 drift:
   log_statements: true
 postgres:
-  host: 0.0.0.0
+  host: localhost
   database: postgres
   port: 5432
   username: username

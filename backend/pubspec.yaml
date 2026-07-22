@@ -15,6 +15,7 @@ dependencies:
   vaden: ^1.0.2
   pub_semver: ^2.1.4
   yaml: ^3.1.2
+  crypto: ^3.0.6
 
 dev_dependencies:
   drift_dev: ^2.29.0

@@ -33,3 +33,11 @@ storage:
 env:
   base_url: http://localhost
   mode: debug
+
+security:
+  secret: 'troque-este-segredo-em-producao'  # via env var em produção
+  tokenValidity: 900        # 15 min, em segundos
+  refreshTokenValidity: 604800   # 7 dias, em segundos
+  issuer: dartisan
+  # dart_jsonwebtoken exige lista não-vazia (Audience assert) — não deixar [].
+  audiences: ['dartisan-api']

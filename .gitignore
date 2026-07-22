@@ -1,0 +1,18 @@
+# Dart/Flutter
+.dart_tool/
+.packages
+build/
+.pub-cache/
+.pub/
+*.g.dart.bak
+
+# IDE
+.idea/
+.vscode/
+
+# Env / local config
+.env
+*.env
+
+# Backend uploads / local storage
+backend/uploads/

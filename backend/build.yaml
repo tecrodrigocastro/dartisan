@@ -1,0 +1,10 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          sql:
+            dialect: postgres
+
+      vaden_class_scanner|aggregating_vaden_builder:
+        enabled: true

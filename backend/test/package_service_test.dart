@@ -25,6 +25,36 @@ class FakePackageRepository implements PackageRepository {
     }
     return null;
   }
+
+  @override
+  Future<void> saveNewVersion({
+    required String packageName,
+    required String version,
+    required String pubspecYaml,
+    required String archiveSha256,
+    required String archivePath,
+    required String latestVersion,
+    int? uploaderTokenId,
+  }) async {
+    package = Package(
+      name: packageName,
+      createdAt: package?.createdAt ?? DateTime.now(),
+      latestVersion: latestVersion,
+    );
+    versions = [
+      ...versions,
+      PackageVersion(
+        id: versions.length + 1,
+        packageName: packageName,
+        version: version,
+        pubspecYaml: pubspecYaml,
+        archiveSha256: archiveSha256,
+        archivePath: archivePath,
+        uploadedAt: DateTime.now(),
+        uploaderTokenId: uploaderTokenId,
+      ),
+    ];
+  }
 }
 
 class FakePackageStorage implements PackageStorage {

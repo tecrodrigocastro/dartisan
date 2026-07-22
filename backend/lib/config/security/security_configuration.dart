@@ -21,10 +21,16 @@ class SecurityConfiguration {
       RequestMatcher('/api/auth/**/*').permitAll(),
       RequestMatcher('/docs/**/*').permitAll(),
       RequestMatcher('/hello/**/*').permitAll(),
-      // Leitura de pacotes é pública por design (roadmap itens 1 e 2).
+      // Leitura de pacotes é pública por design (roadmap itens 1 e 2). Cobre
+      // também os GETs do publish (/versions/new, /versions/newUploadFinish).
       RequestMatcher('/api/packages/**/*', HttpMethod.get).permitAll(),
-      // Publish (item 3) usa PublishTokens, não JWT — validado no próprio
-      // controller, não por esse middleware. O resto exige sessão JWT.
+      // POST do passo 3.2 do publish: usa PublishTokens (resolvidos no
+      // passo 3.1) carregados pela UploadSession, não Authorization — não
+      // pode exigir sessão JWT aqui. Validado no próprio controller/service.
+      RequestMatcher(
+        '/api/packages/versions/newUpload',
+        HttpMethod.post,
+      ).permitAll(),
       AnyRequest().authenticated(),
     ]);
   }

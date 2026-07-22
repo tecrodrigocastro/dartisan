@@ -2,3 +2,6 @@
 # Created by `dart pub`
 .dart_tool/
 lib/vaden_application.dart
+
+# Storage provider local (roadmap item 2) — tarballs publicados
+/uploads/

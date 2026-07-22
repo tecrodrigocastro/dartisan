@@ -41,3 +41,6 @@ security:
   issuer: dartisan
   # dart_jsonwebtoken exige lista não-vazia (Audience assert) — não deixar [].
   audiences: ['dartisan-api']
+
+publish:
+  max_tarball_size_bytes: 104857600  # 100 MiB, mesma ordem de grandeza do pub.dev

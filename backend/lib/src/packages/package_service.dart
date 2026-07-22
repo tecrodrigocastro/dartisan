@@ -1,4 +1,3 @@
-import 'package:pub_semver/pub_semver.dart';
 import 'package:vaden/vaden.dart';
 import 'package:yaml/yaml.dart';
 
@@ -6,6 +5,7 @@ import '../../config/drift/app_database.dart';
 import 'package_dto.dart';
 import 'package_repository.dart';
 import 'package_storage.dart';
+import 'version_ordering.dart';
 
 class PackageArchive {
   final Stream<List<int>> data;
@@ -42,15 +42,10 @@ class PackageServiceImpl implements PackageService {
       });
     }
 
-    final sorted = [...rows]..sort(
-      (a, b) => Version.parse(a.version).compareTo(Version.parse(b.version)),
-    );
-
-    final stableRows = sorted.where(
-      (row) => !Version.parse(row.version).isPreRelease,
-    );
-    // Se só existirem pre-releases, usa a mais recente delas como "latest".
-    final latestRow = stableRows.isNotEmpty ? stableRows.last : sorted.last;
+    final byVersion = {for (final row in rows) row.version: row};
+    final sortedVersions = sortVersions(byVersion.keys.toList());
+    final sorted = sortedVersions.map((v) => byVersion[v]!).toList();
+    final latestRow = byVersion[pickLatestVersion(sortedVersions)]!;
 
     return PackageMetadataDTO(
       name: name,

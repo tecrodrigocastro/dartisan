@@ -16,6 +16,9 @@ dependencies:
   pub_semver: ^2.1.4
   yaml: ^3.1.2
   crypto: ^3.0.6
+  pubspec_manager: ^1.0.0
+  archive: ^3.6.1
+  shelf_multipart: ^2.0.1
 
 dev_dependencies:
   drift_dev: ^2.29.0

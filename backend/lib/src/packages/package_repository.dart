@@ -8,6 +8,10 @@ abstract class PackageRepository {
   Future<List<PackageVersion>> findVersions(String packageName);
   Future<PackageVersion?> findVersion(String packageName, String version);
 
+  /// Pacotes distintos com pelo menos uma versão enviada por [userId] — via
+  /// PackageVersions.uploaderTokenId -> PublishTokens.userId.
+  Future<List<Package>> findPackagesUploadedByUser(int userId);
+
   /// Insere a nova versão e atualiza (ou cria) o Package correspondente com
   /// [latestVersion] já recalculado — atômico, usado pelo publish (item 3).
   Future<void> saveNewVersion({
@@ -46,6 +50,34 @@ class DriftPackageRepository implements PackageRepository {
           (v) => v.packageName.equals(packageName) & v.version.equals(version),
         ))
         .getSingleOrNull();
+  }
+
+  @override
+  Future<List<Package>> findPackagesUploadedByUser(int userId) async {
+    // selectOnly + addColumns pra selecionar só packageName — um SELECT com
+    // join trazendo todas as colunas das 3 tabelas não passa no GROUP BY do
+    // Postgres (toda coluna selecionada precisa estar agregada ou agrupada).
+    final nameQuery =
+        _db.selectOnly(_db.packageVersions)
+          ..addColumns([_db.packageVersions.packageName])
+          ..join([
+            innerJoin(
+              _db.publishTokens,
+              _db.publishTokens.id.equalsExp(
+                _db.packageVersions.uploaderTokenId,
+              ),
+            ),
+          ])
+          ..where(_db.publishTokens.userId.equals(userId))
+          ..groupBy([_db.packageVersions.packageName]);
+
+    final names = await nameQuery
+        .map((row) => row.read(_db.packageVersions.packageName)!)
+        .get();
+
+    if (names.isEmpty) return [];
+
+    return (_db.select(_db.packages)..where((p) => p.name.isIn(names))).get();
   }
 
   @override

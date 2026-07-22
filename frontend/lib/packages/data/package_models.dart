@@ -19,6 +19,24 @@ class PackageVersion {
   );
 }
 
+class MyPackage {
+  final String name;
+  final String latestVersion;
+  final DateTime createdAt;
+
+  const MyPackage({
+    required this.name,
+    required this.latestVersion,
+    required this.createdAt,
+  });
+
+  factory MyPackage.fromJson(Map<String, dynamic> json) => MyPackage(
+    name: json['name'] as String,
+    latestVersion: json['latest_version'] as String,
+    createdAt: DateTime.parse(json['created_at'] as String),
+  );
+}
+
 class PackageMetadata {
   final String name;
   final PackageVersion latest;

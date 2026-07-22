@@ -35,6 +35,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
               SessionAuthenticated(:final username, :final roles) => Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  TextButton(
+                    onPressed: () => context.navigate('/my-packages'),
+                    child: const Text('Meus pacotes', style: TextStyle(color: Colors.white)),
+                  ),
                   if (roles.contains('publisher') || roles.contains('admin'))
                     TextButton(
                       onPressed: () => context.navigate('/tokens'),

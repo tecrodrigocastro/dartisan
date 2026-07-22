@@ -32,3 +32,22 @@ class PackageMetadataDTO {
     required this.versions,
   });
 }
+
+/// Item da listagem "meus pacotes" — só o resumo, não o pubspec/versões
+/// completas (isso já é servido por [PackageMetadataDTO] via /api/packages/{name}).
+@DTO()
+class MyPackageDTO {
+  final String name;
+
+  @JsonKey('latest_version')
+  final String latestVersion;
+
+  @JsonKey('created_at')
+  final DateTime createdAt;
+
+  MyPackageDTO({
+    required this.name,
+    required this.latestVersion,
+    required this.createdAt,
+  });
+}

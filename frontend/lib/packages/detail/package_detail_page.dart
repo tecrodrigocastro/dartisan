@@ -147,7 +147,7 @@ class _VersionTile extends StatelessWidget {
     return ListTile(
       leading: isLatest ? const Icon(Icons.star, color: Colors.amber) : const Icon(Icons.archive_outlined),
       title: Text(version.version),
-      subtitle: Text('sha256: ${version.archiveSha256.substring(0, 12)}…'),
+      subtitle: Text('sha256: ${_truncatedSha256(version.archiveSha256)}'),
       trailing: IconButton(
         tooltip: 'Baixar tarball',
         icon: const Icon(Icons.download),
@@ -158,4 +158,11 @@ class _VersionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _truncatedSha256(String sha256) {
+  const previewLength = 12;
+  return sha256.length <= previewLength
+      ? sha256
+      : '${sha256.substring(0, previewLength)}…';
 }

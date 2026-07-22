@@ -16,6 +16,7 @@ class PackageArchive {
 abstract class PackageService {
   Future<PackageMetadataDTO> getPackageMetadata(String name);
   Future<PackageArchive> getPackageArchive(String name, String version);
+  Future<List<MyPackageDTO>> getPackagesUploadedBy(int userId);
 }
 
 @Service()
@@ -68,6 +69,20 @@ class PackageServiceImpl implements PackageService {
 
     final data = await _storage.read(row.archivePath);
     return PackageArchive(data);
+  }
+
+  @override
+  Future<List<MyPackageDTO>> getPackagesUploadedBy(int userId) async {
+    final packages = await _repository.findPackagesUploadedByUser(userId);
+    return packages
+        .map(
+          (p) => MyPackageDTO(
+            name: p.name,
+            latestVersion: p.latestVersion,
+            createdAt: p.createdAt,
+          ),
+        )
+        .toList();
   }
 
   PackageVersionDTO _toVersionDTO(PackageVersion row) {

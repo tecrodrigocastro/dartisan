@@ -17,4 +17,15 @@ class PackageRepository {
       throw ApiException.fromDioError(e);
     }
   }
+
+  Future<List<MyPackage>> getMine() async {
+    try {
+      final response = await _client.dio.get('/api/me/packages');
+      return (response.data as List)
+          .map((json) => MyPackage.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
 }

@@ -5,6 +5,10 @@ targets:
         options:
           sql:
             dialect: postgres
+          # currentDateAndTime() (usado nos defaults de createdAt/etc.) gera
+          # strftime(...) por padrão, que não existe no Postgres — precisa
+          # dessa flag pra gerar CURRENT_TIMESTAMP em vez disso.
+          store_date_time_values_as_text: true
 
       vaden_class_scanner|aggregating_vaden_builder:
         enabled: true

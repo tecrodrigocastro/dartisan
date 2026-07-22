@@ -1,30 +1,61 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/core/jwt/jwt_decoder.dart';
+import 'package:frontend/packages/search/package_search_controller.dart';
+import 'package:frontend/packages/search/package_search_state.dart';
 
-import 'package:frontend/main.dart';
+String _base64UrlSegment(Map<String, dynamic> segment) =>
+    base64Url.encode(utf8.encode(jsonEncode(segment))).replaceAll('=', '');
+
+String _fakeJwt(Map<String, dynamic> payload) =>
+    '${_base64UrlSegment({'alg': 'HS256'})}.${_base64UrlSegment(payload)}.signature';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('PackageSearchController.validate', () {
+    test('rejects empty input', () {
+      final controller = PackageSearchController();
+      expect(controller.validate('   '), isNull);
+      expect(controller.value, isA<PackageSearchInvalid>());
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('rejects names with invalid characters', () {
+      final controller = PackageSearchController();
+      expect(controller.validate('my-package!'), isNull);
+      expect(controller.value, isA<PackageSearchInvalid>());
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('accepts a valid package name and trims it', () {
+      final controller = PackageSearchController();
+      expect(controller.validate('  meu_pacote  '), 'meu_pacote');
+      expect(controller.value, isA<PackageSearchIdle>());
+    });
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  group('JwtClaims.decode', () {
+    test('extracts sub, roles and expiration', () {
+      final exp = DateTime.now().add(const Duration(minutes: 15));
+      final token = _fakeJwt({
+        'sub': 'rodrigo',
+        'roles': ['publisher'],
+        'exp': exp.millisecondsSinceEpoch ~/ 1000,
+      });
+
+      final claims = JwtClaims.decode(token);
+
+      expect(claims.subject, 'rodrigo');
+      expect(claims.roles, ['publisher']);
+      expect(claims.isExpired, isFalse);
+    });
+
+    test('treats a past exp as expired', () {
+      final token = _fakeJwt({
+        'sub': 'rodrigo',
+        'roles': <String>[],
+        'exp': DateTime.now().subtract(const Duration(minutes: 1)).millisecondsSinceEpoch ~/ 1000,
+      });
+
+      expect(JwtClaims.decode(token).isExpired, isTrue);
+    });
   });
 }

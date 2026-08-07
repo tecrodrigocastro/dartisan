@@ -1,12 +1,10 @@
 import 'package:flutter_modular/flutter_modular.dart';
 
-import '../core/session/guards.dart';
 import 'detail/package_detail_controller.dart';
 import 'detail/package_detail_page.dart';
-import 'mine/my_packages_controller.dart';
-import 'mine/my_packages_page.dart';
 import 'search/package_search_controller.dart';
 import 'search/package_search_page.dart';
+import 'search/recent_packages_controller.dart';
 
 final packagesModule = createModule(
   path: '/',
@@ -14,19 +12,15 @@ final packagesModule = createModule(
     c
       ..route(
         '/',
-        provide: (s) => s.addChangeNotifier<PackageSearchController>(PackageSearchController.new),
+        provide: (s) => s
+          ..addChangeNotifier<PackageSearchController>(PackageSearchController.new)
+          ..addChangeNotifier<RecentPackagesController>(RecentPackagesController.new),
         child: (ctx, state) => const PackageSearchPage(),
       )
       ..route(
         '/packages/:name',
         provide: (s) => s.addChangeNotifier<PackageDetailController>(PackageDetailController.new),
         child: (ctx, state) => PackageDetailPage(name: state['name']!),
-      )
-      ..route(
-        '/my-packages',
-        guards: [authGuard],
-        provide: (s) => s.addChangeNotifier<MyPackagesController>(MyPackagesController.new),
-        child: (ctx, state) => const MyPackagesPage(),
       );
   },
 );

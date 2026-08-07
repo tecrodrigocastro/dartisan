@@ -4,6 +4,8 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'app_module.dart';
 import 'core/session/app_session.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_controller.dart';
 
 void main() {
   usePathUrlStrategy();
@@ -11,7 +13,7 @@ void main() {
 }
 
 /// Espera [AppSession.restore] terminar antes de montar o router — sem isso,
-/// um deep-link pra uma rota guardada (`/tokens`) avaliaria o guard contra
+/// um deep-link pra uma rota guardada (`/profile`) avaliaria o guard contra
 /// `SessionUnknown` e redirecionaria pro login mesmo com uma sessão válida
 /// persistida (a leitura do storage é assíncrona por natureza).
 class AppRoot extends StatefulWidget {
@@ -34,10 +36,17 @@ class _AppRootState extends State<AppRoot> {
             home: Scaffold(body: Center(child: CircularProgressIndicator())),
           );
         }
-        return MaterialApp.router(
-          title: 'Dartisan',
-          theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
-          routerConfig: ModularApp.routerConfigOf(context),
+        return ValueListenableBuilder<ThemeMode>(
+          valueListenable: inject<ThemeController>(),
+          builder: (context, mode, _) {
+            return MaterialApp.router(
+              title: 'Dartisan',
+              theme: AppTheme.light(),
+              darkTheme: AppTheme.dark(),
+              themeMode: mode,
+              routerConfig: ModularApp.routerConfigOf(context),
+            );
+          },
         );
       },
     );

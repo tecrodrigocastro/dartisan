@@ -12,11 +12,15 @@ class PackageVersionDTO {
 
   final Map<String, dynamic> pubspec;
 
+  @JsonKey('uploaded_by')
+  final String? uploadedBy;
+
   PackageVersionDTO({
     required this.version,
     required this.archiveUrl,
     required this.archiveSha256,
     required this.pubspec,
+    required this.uploadedBy,
   });
 }
 
@@ -33,10 +37,11 @@ class PackageMetadataDTO {
   });
 }
 
-/// Item da listagem "meus pacotes" — só o resumo, não o pubspec/versões
-/// completas (isso já é servido por [PackageMetadataDTO] via /api/packages/{name}).
+/// Resumo de pacote — usado tanto na listagem pública (`GET /api/packages`)
+/// quanto em "meus pacotes" (`GET /api/me/packages`). Não carrega
+/// pubspec/versões completas, isso já é servido por [PackageMetadataDTO].
 @DTO()
-class MyPackageDTO {
+class PackageSummaryDTO {
   final String name;
 
   @JsonKey('latest_version')
@@ -45,9 +50,17 @@ class MyPackageDTO {
   @JsonKey('created_at')
   final DateTime createdAt;
 
-  MyPackageDTO({
+  PackageSummaryDTO({
     required this.name,
     required this.latestVersion,
     required this.createdAt,
   });
+}
+
+@DTO()
+class PackageListDTO {
+  final List<PackageSummaryDTO> packages;
+  final int total;
+
+  PackageListDTO({required this.packages, required this.total});
 }

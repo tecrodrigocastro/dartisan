@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import '../../shared/widgets/app_top_bar.dart';
+import '../../core/theme/app_theme.dart';
+import '../../shared/widgets/dotted_grid_background.dart';
 import 'login_controller.dart';
 import 'login_state.dart';
 
@@ -43,58 +44,87 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AppTopBar(),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: ValueListenableBuilder<LoginState>(
-              valueListenable: _controller,
-              builder: (context, state, _) {
-                final submitting = state is LoginSubmitting;
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Login', style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Usuário',
-                        border: OutlineInputBorder(),
+      body: DottedGridBackground(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.inventory_2_outlined, size: 40, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(height: 12),
+                  Text('Dartisan', style: Theme.of(context).textTheme.headlineSmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Instância self-hosted',
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 32),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: ValueListenableBuilder<LoginState>(
+                        valueListenable: _controller,
+                        builder: (context, state, _) {
+                          final submitting = state is LoginSubmitting;
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Bem-vindo de volta', style: Theme.of(context).textTheme.titleLarge),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Acesse sua conta pra gerenciar pacotes.',
+                                style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                              ),
+                              const SizedBox(height: 20),
+                              TextField(
+                                controller: _usernameController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Usuário',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                                enabled: !submitting,
+                              ),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: _passwordController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Senha',
+                                  prefixIcon: Icon(Icons.lock_outline),
+                                ),
+                                obscureText: true,
+                                enabled: !submitting,
+                                onSubmitted: (_) => _submit(),
+                              ),
+                              if (state is LoginFailure) ...[
+                                const SizedBox(height: 12),
+                                Text(state.message, style: const TextStyle(color: Colors.red)),
+                              ],
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton(
+                                  onPressed: submitting ? null : _submit,
+                                  child: submitting
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Text('ENTRAR'),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
-                      enabled: !submitting,
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Senha',
-                        border: OutlineInputBorder(),
-                      ),
-                      obscureText: true,
-                      enabled: !submitting,
-                      onSubmitted: (_) => _submit(),
-                    ),
-                    if (state is LoginFailure) ...[
-                      const SizedBox(height: 12),
-                      Text(state.message, style: const TextStyle(color: Colors.red)),
-                    ],
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: submitting ? null : _submit,
-                      child: submitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Entrar'),
-                    ),
-                  ],
-                );
-              },
+                  ),
+                ],
+              ),
             ),
           ),
         ),

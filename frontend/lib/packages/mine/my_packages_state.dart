@@ -9,7 +9,7 @@ class MyPackagesLoading extends MyPackagesState {
 }
 
 class MyPackagesLoaded extends MyPackagesState {
-  final List<MyPackage> packages;
+  final List<PackageSummary> packages;
   const MyPackagesLoaded(this.packages);
 }
 

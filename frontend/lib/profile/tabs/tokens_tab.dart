@@ -2,19 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import '../shared/widgets/app_top_bar.dart';
-import 'data/publish_token_models.dart';
-import 'tokens_controller.dart';
-import 'tokens_state.dart';
+import '../../tokens/data/publish_token_models.dart';
+import '../../tokens/tokens_controller.dart';
+import '../../tokens/tokens_state.dart';
 
-class TokensPage extends StatefulWidget {
-  const TokensPage({super.key});
+class TokensTab extends StatefulWidget {
+  const TokensTab({super.key});
 
   @override
-  State<TokensPage> createState() => _TokensPageState();
+  State<TokensTab> createState() => _TokensTabState();
 }
 
-class _TokensPageState extends State<TokensPage> {
+class _TokensTabState extends State<TokensTab> {
   late final TokensController _controller;
 
   @override
@@ -59,36 +58,33 @@ class _TokensPageState extends State<TokensPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const AppTopBar(),
-      body: ValueListenableBuilder<TokensState>(
-        valueListenable: _controller,
-        builder: (context, state, _) {
-          return switch (state) {
-            TokensLoading() => const Center(child: CircularProgressIndicator()),
-            TokensFailure(:final message) => Center(child: Text(message)),
-            TokensLoaded(:final tokens) => ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Publish tokens', style: Theme.of(context).textTheme.headlineSmall),
-                    FilledButton.icon(
-                      onPressed: _createToken,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Novo token'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                if (tokens.isEmpty) const Text('Nenhum token criado ainda.'),
-                for (final token in tokens) _TokenTile(token: token, onRevoke: () => _revoke(token.id)),
-              ],
-            ),
-          };
-        },
-      ),
+    return ValueListenableBuilder<TokensState>(
+      valueListenable: _controller,
+      builder: (context, state, _) {
+        return switch (state) {
+          TokensLoading() => const Center(child: CircularProgressIndicator()),
+          TokensFailure(:final message) => Center(child: Text(message)),
+          TokensLoaded(:final tokens) => ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Publish tokens', style: Theme.of(context).textTheme.titleLarge),
+                  FilledButton.icon(
+                    onPressed: _createToken,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Novo token'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (tokens.isEmpty) const Text('Nenhum token criado ainda.'),
+              for (final token in tokens) _TokenTile(token: token, onRevoke: () => _revoke(token.id)),
+            ],
+          ),
+        };
+      },
     );
   }
 }

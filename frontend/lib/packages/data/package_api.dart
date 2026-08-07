@@ -18,11 +18,23 @@ class PackageRepository {
     }
   }
 
-  Future<List<MyPackage>> getMine() async {
+  Future<PackageList> listRecent({int limit = 12, int offset = 0}) async {
+    try {
+      final response = await _client.dio.get(
+        '/api/packages',
+        queryParameters: {'limit': limit, 'offset': offset},
+      );
+      return PackageList.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
+
+  Future<List<PackageSummary>> getMine() async {
     try {
       final response = await _client.dio.get('/api/me/packages');
       return (response.data as List)
-          .map((json) => MyPackage.fromJson(json as Map<String, dynamic>))
+          .map((json) => PackageSummary.fromJson(json as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw ApiException.fromDioError(e);

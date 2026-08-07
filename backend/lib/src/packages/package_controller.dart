@@ -13,6 +13,17 @@ class PackageController {
 
   PackageController(this._service);
 
+  @Get('/')
+  Future<PackageListDTO> listPackages(
+    @Query('limit') int? limit,
+    @Query('offset') int? offset,
+  ) {
+    return _service.listRecentPackages(
+      limit: limit ?? 12,
+      offset: offset ?? 0,
+    );
+  }
+
   // shelf_router usa sintaxe <param>, não :param (a doc do vaden_core mostra
   // :param, mas não é o que a versão resolvida de shelf_router entende).
   @Get('/<name>')

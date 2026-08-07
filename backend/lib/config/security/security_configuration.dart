@@ -22,8 +22,11 @@ class SecurityConfiguration {
       RequestMatcher('/docs/**/*').permitAll(),
       RequestMatcher('/hello/**/*').permitAll(),
       // Leitura de pacotes é pública por design (roadmap itens 1 e 2). Cobre
-      // também os GETs do publish (/versions/new, /versions/newUploadFinish).
-      RequestMatcher('/api/packages/**/*', HttpMethod.get).permitAll(),
+      // também os GETs do publish (/versions/new, /versions/newUploadFinish) e
+      // GET /api/packages (listagem, item 6) — '**' (sem '/*' no final) casa
+      // com o path exato '/api/packages' e com qualquer profundidade abaixo
+      // dele, ver Glob._matchSegments em vaden_security.
+      RequestMatcher('/api/packages/**', HttpMethod.get).permitAll(),
       // POST do passo 3.2 do publish: usa PublishTokens (resolvidos no
       // passo 3.1) carregados pela UploadSession, não Authorization — não
       // pode exigir sessão JWT aqui. Validado no próprio controller/service.

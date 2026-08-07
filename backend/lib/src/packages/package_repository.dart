@@ -6,11 +6,24 @@ import '../../config/drift/app_database.dart';
 abstract class PackageRepository {
   Future<Package?> findByName(String name);
   Future<List<PackageVersion>> findVersions(String packageName);
+
+  /// Como [findVersions], mas cada versão vem pareada com o username de quem
+  /// publicou (null se o publish token que subiu a versão foi apagado, ou pra
+  /// dados antigos sem uploaderTokenId).
+  Future<List<(PackageVersion, String?)>> findVersionsWithUploader(
+    String packageName,
+  );
+
   Future<PackageVersion?> findVersion(String packageName, String version);
 
   /// Pacotes distintos com pelo menos uma versão enviada por [userId] — via
   /// PackageVersions.uploaderTokenId -> PublishTokens.userId.
   Future<List<Package>> findPackagesUploadedByUser(int userId);
+
+  /// Os `limit` pacotes mais recentes (por `createdAt`), pra listagem pública.
+  Future<List<Package>> listRecent({required int limit, required int offset});
+
+  Future<int> countAll();
 
   /// Insere a nova versão e atualiza (ou cria) o Package correspondente com
   /// [latestVersion] já recalculado — atômico, usado pelo publish (item 3).
@@ -42,6 +55,40 @@ class DriftPackageRepository implements PackageRepository {
     return (_db.select(_db.packageVersions)
           ..where((v) => v.packageName.equals(packageName)))
         .get();
+  }
+
+  @override
+  Future<List<(PackageVersion, String?)>> findVersionsWithUploader(
+    String packageName,
+  ) async {
+    // leftOuterJoin (não innerJoin) porque uploaderTokenId é nullable — uma
+    // versão sem token associado (ou com token já apagado) ainda deve
+    // aparecer, só sem uploader. Sem GROUP BY aqui, então nenhum problema em
+    // selecionar todas as colunas das 3 tabelas (diferente do que rolou em
+    // findPackagesUploadedByUser).
+    final query =
+        _db.select(_db.packageVersions).join([
+          leftOuterJoin(
+            _db.publishTokens,
+            _db.publishTokens.id.equalsExp(
+              _db.packageVersions.uploaderTokenId,
+            ),
+          ),
+          leftOuterJoin(
+            _db.users,
+            _db.users.id.equalsExp(_db.publishTokens.userId),
+          ),
+        ])..where(_db.packageVersions.packageName.equals(packageName));
+
+    final rows = await query.get();
+    return rows
+        .map(
+          (row) => (
+            row.readTable(_db.packageVersions),
+            row.readTableOrNull(_db.users)?.username,
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -78,6 +125,23 @@ class DriftPackageRepository implements PackageRepository {
     if (names.isEmpty) return [];
 
     return (_db.select(_db.packages)..where((p) => p.name.isIn(names))).get();
+  }
+
+  @override
+  Future<List<Package>> listRecent({required int limit, required int offset}) {
+    return (_db.select(_db.packages)
+          ..orderBy([(p) => OrderingTerm.desc(p.createdAt)])
+          ..limit(limit, offset: offset))
+        .get();
+  }
+
+  @override
+  Future<int> countAll() async {
+    // Packages não tem coluna `id` — a PK é `name` (ver app_database.dart).
+    final count = _db.packages.name.count();
+    final query = _db.selectOnly(_db.packages)..addColumns([count]);
+    final row = await query.getSingle();
+    return row.read(count) ?? 0;
   }
 
   @override

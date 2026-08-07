@@ -16,7 +16,8 @@ class PackageArchive {
 abstract class PackageService {
   Future<PackageMetadataDTO> getPackageMetadata(String name);
   Future<PackageArchive> getPackageArchive(String name, String version);
-  Future<List<MyPackageDTO>> getPackagesUploadedBy(int userId);
+  Future<List<PackageSummaryDTO>> getPackagesUploadedBy(int userId);
+  Future<PackageListDTO> listRecentPackages({required int limit, required int offset});
 }
 
 @Service()
@@ -31,8 +32,8 @@ class PackageServiceImpl implements PackageService {
   Future<PackageMetadataDTO> getPackageMetadata(String name) async {
     final package = await _repository.findByName(name);
     final rows = package == null
-        ? const <PackageVersion>[]
-        : await _repository.findVersions(name);
+        ? const <(PackageVersion, String?)>[]
+        : await _repository.findVersionsWithUploader(name);
 
     if (package == null || rows.isEmpty) {
       throw ResponseException.notFound({
@@ -43,15 +44,15 @@ class PackageServiceImpl implements PackageService {
       });
     }
 
-    final byVersion = {for (final row in rows) row.version: row};
+    final byVersion = {for (final row in rows) row.$1.version: row};
     final sortedVersions = sortVersions(byVersion.keys.toList());
     final sorted = sortedVersions.map((v) => byVersion[v]!).toList();
-    final latestRow = byVersion[pickLatestVersion(sortedVersions)]!;
+    final latest = byVersion[pickLatestVersion(sortedVersions)]!;
 
     return PackageMetadataDTO(
       name: name,
-      latest: _toVersionDTO(latestRow),
-      versions: sorted.map(_toVersionDTO).toList(),
+      latest: _toVersionDTO(latest.$1, latest.$2),
+      versions: sorted.map((row) => _toVersionDTO(row.$1, row.$2)).toList(),
     );
   }
 
@@ -72,20 +73,31 @@ class PackageServiceImpl implements PackageService {
   }
 
   @override
-  Future<List<MyPackageDTO>> getPackagesUploadedBy(int userId) async {
+  Future<List<PackageSummaryDTO>> getPackagesUploadedBy(int userId) async {
     final packages = await _repository.findPackagesUploadedByUser(userId);
-    return packages
-        .map(
-          (p) => MyPackageDTO(
-            name: p.name,
-            latestVersion: p.latestVersion,
-            createdAt: p.createdAt,
-          ),
-        )
-        .toList();
+    return packages.map(_toSummaryDTO).toList();
   }
 
-  PackageVersionDTO _toVersionDTO(PackageVersion row) {
+  @override
+  Future<PackageListDTO> listRecentPackages({
+    required int limit,
+    required int offset,
+  }) async {
+    final packages = await _repository.listRecent(limit: limit, offset: offset);
+    final total = await _repository.countAll();
+    return PackageListDTO(
+      packages: packages.map(_toSummaryDTO).toList(),
+      total: total,
+    );
+  }
+
+  PackageSummaryDTO _toSummaryDTO(Package p) => PackageSummaryDTO(
+    name: p.name,
+    latestVersion: p.latestVersion,
+    createdAt: p.createdAt,
+  );
+
+  PackageVersionDTO _toVersionDTO(PackageVersion row, String? uploadedBy) {
     final baseUrl = _settings['env']['base_url'] as String;
     final pubspecMap = Map<String, dynamic>.from(
       loadYaml(row.pubspecYaml) as Map,
@@ -97,6 +109,7 @@ class PackageServiceImpl implements PackageService {
           '$baseUrl/api/packages/${row.packageName}/versions/${row.version}.tar.gz',
       archiveSha256: row.archiveSha256,
       pubspec: pubspecMap,
+      uploadedBy: uploadedBy,
     );
   }
 }

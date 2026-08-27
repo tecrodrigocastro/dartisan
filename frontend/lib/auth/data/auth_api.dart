@@ -43,4 +43,18 @@ class AuthApi {
       throw ApiException.fromDioError(e);
     }
   }
+
+  /// Troca o código de uso único (devolvido no redirect de volta do GitHub)
+  /// pelos tokens de verdade — ver GithubOAuthController no backend.
+  Future<Tokenization> exchangeGithubCode(String code) async {
+    try {
+      final response = await _client.dio.post(
+        '/api/auth/github/exchange',
+        data: {'code': code},
+      );
+      return Tokenization.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException.fromDioError(e);
+    }
+  }
 }

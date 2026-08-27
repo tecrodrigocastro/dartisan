@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/http/api_base_url.dart';
+import '../../core/theme/tokens.dart';
 import '../../shared/widgets/dotted_grid_background.dart';
 import 'login_controller.dart';
 import 'login_state.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  /// `true` quando a página foi aberta após um redirect de erro do fluxo
+  /// OAuth do GitHub (`/login?error=github_oauth_failed`).
+  final bool githubError;
+
+  const LoginPage({super.key, this.githubError = false});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -22,6 +28,13 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _controller = context.read<LoginController>();
+  }
+
+  void _loginWithGithub() {
+    launchUrl(
+      Uri.parse('$apiBaseUrl/api/auth/github/login'),
+      webOnlyWindowName: '_self',
+    );
   }
 
   @override
@@ -53,13 +66,13 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.inventory_2_outlined, size: 40, color: Theme.of(context).colorScheme.primary),
+                  Image.asset('assets/logo.png', height: 48, fit: BoxFit.contain),
                   const SizedBox(height: 12),
                   Text('Dartisan', style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 4),
                   Text(
                     'Instância self-hosted',
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                    style: TextStyle(color: context.colors.textFaint, fontSize: 13),
                   ),
                   const SizedBox(height: 32),
                   Card(
@@ -77,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(height: 4),
                               Text(
                                 'Acesse sua conta pra gerenciar pacotes.',
-                                style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                                style: TextStyle(color: context.colors.textFaint, fontSize: 13),
                               ),
                               const SizedBox(height: 20),
                               TextField(
@@ -101,7 +114,13 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               if (state is LoginFailure) ...[
                                 const SizedBox(height: 12),
-                                Text(state.message, style: const TextStyle(color: Colors.red)),
+                                Text(state.message, style: TextStyle(color: context.colors.danger)),
+                              ] else if (widget.githubError) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Não foi possível entrar com o GitHub. Tente de novo.',
+                                  style: TextStyle(color: context.colors.danger),
+                                ),
                               ],
                               const SizedBox(height: 24),
                               SizedBox(
@@ -115,6 +134,33 @@ class _LoginPageState extends State<LoginPage> {
                                           child: CircularProgressIndicator(strokeWidth: 2),
                                         )
                                       : const Text('ENTRAR'),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                children: [
+                                  Expanded(child: Divider(color: context.colors.borderStrong)),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: DartisanSpacing.s3),
+                                    child: Text(
+                                      'OU CONTINUE COM',
+                                      style: TextStyle(
+                                        color: context.colors.textFaint,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(child: Divider(color: context.colors.borderStrong)),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: submitting ? null : _loginWithGithub,
+                                  child: const Text('Continuar com GitHub'),
                                 ),
                               ),
                             ],

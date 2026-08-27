@@ -2,6 +2,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import '../auth/data/auth_api.dart';
 import '../packages/data/package_api.dart';
+import '../packages/import/data/github_import_api.dart';
 import '../profile/data/me_api.dart';
 import '../tokens/data/publish_token_api.dart';
 import 'http/api_client.dart';
@@ -23,6 +24,7 @@ final coreModule = createModule(
       ..addSingleton<ApiClient>(ApiClient.new)
       ..addSingleton<PackageRepository>(PackageRepository.new)
       ..addSingleton<PublishTokenRepository>(PublishTokenRepository.new)
-      ..addSingleton<MeApi>(MeApi.new);
+      ..addSingleton<MeApi>(MeApi.new)
+      ..addSingleton<GithubImportApi>(GithubImportApi.new);
   },
 );

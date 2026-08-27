@@ -56,22 +56,54 @@ class PackageList {
   );
 }
 
+class DownloadDay {
+  final String date;
+  final int count;
+
+  const DownloadDay({required this.date, required this.count});
+
+  factory DownloadDay.fromJson(Map<String, dynamic> json) => DownloadDay(
+    date: json['date'] as String,
+    count: json['count'] as int,
+  );
+}
+
 class PackageMetadata {
   final String name;
   final PackageVersion latest;
   final List<PackageVersion> versions;
+  final int likeCount;
+  final int downloadsTotal;
+  final List<DownloadDay> downloadsDaily;
 
   const PackageMetadata({
     required this.name,
     required this.latest,
     required this.versions,
+    required this.likeCount,
+    required this.downloadsTotal,
+    required this.downloadsDaily,
   });
+
+  PackageMetadata copyWith({int? likeCount}) => PackageMetadata(
+    name: name,
+    latest: latest,
+    versions: versions,
+    likeCount: likeCount ?? this.likeCount,
+    downloadsTotal: downloadsTotal,
+    downloadsDaily: downloadsDaily,
+  );
 
   factory PackageMetadata.fromJson(Map<String, dynamic> json) => PackageMetadata(
     name: json['name'] as String,
     latest: PackageVersion.fromJson(json['latest'] as Map<String, dynamic>),
     versions: (json['versions'] as List)
         .map((v) => PackageVersion.fromJson(v as Map<String, dynamic>))
+        .toList(),
+    likeCount: json['like_count'] as int,
+    downloadsTotal: json['downloads_total'] as int,
+    downloadsDaily: (json['downloads_daily'] as List)
+        .map((d) => DownloadDay.fromJson(d as Map<String, dynamic>))
         .toList(),
   );
 }

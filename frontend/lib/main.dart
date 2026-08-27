@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'app_module.dart';
 import 'core/session/app_session.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 
-void main() {
+Future<void> main() async {
   usePathUrlStrategy();
+  await initializeDateFormatting('pt_BR');
   runApp(ModularApp(module: appModule, child: const AppRoot()));
 }
 

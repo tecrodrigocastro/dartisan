@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+import '../../core/formatting/date_format.dart';
+import '../../core/theme/tokens.dart';
 import '../../tokens/data/publish_token_models.dart';
 import '../../tokens/tokens_controller.dart';
 import '../../tokens/tokens_state.dart';
@@ -65,12 +67,12 @@ class _TokensTabState extends State<TokensTab> {
           TokensLoading() => const Center(child: CircularProgressIndicator()),
           TokensFailure(:final message) => Center(child: Text(message)),
           TokensLoaded(:final tokens) => ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(DartisanSpacing.s5),
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Publish tokens', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Tokens de publicação', style: Theme.of(context).textTheme.titleLarge),
                   FilledButton.icon(
                     onPressed: _createToken,
                     icon: const Icon(Icons.add),
@@ -96,18 +98,19 @@ class _TokenTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Card(
       child: ListTile(
         leading: Icon(
           token.isRevoked ? Icons.block : Icons.vpn_key,
-          color: token.isRevoked ? Colors.grey : Colors.green,
+          color: token.isRevoked ? colors.textFaint : colors.success,
         ),
         title: Text('Token #${token.id}'),
         subtitle: Text(
           token.isRevoked
-              ? 'Revogado em ${token.revokedAt}'
-              : 'Criado em ${token.createdAt}'
-                  '${token.lastUsedAt != null ? ' · último uso ${token.lastUsedAt}' : ''}',
+              ? 'Revogado em ${formatDateTime(token.revokedAt!)}'
+              : 'Criado em ${formatDateTime(token.createdAt)}'
+                  '${token.lastUsedAt != null ? ' · último uso ${formatDateTime(token.lastUsedAt!)}' : ''}',
         ),
         trailing: token.isRevoked
             ? null
@@ -129,9 +132,9 @@ class _CreatedTokenDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Copie agora — este token não será mostrado de novo.',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+            style: TextStyle(fontWeight: FontWeight.bold, color: context.colors.danger),
           ),
           const SizedBox(height: 12),
           Container(

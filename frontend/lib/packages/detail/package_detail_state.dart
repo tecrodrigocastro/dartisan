@@ -10,7 +10,8 @@ class PackageDetailLoading extends PackageDetailState {
 
 class PackageDetailLoaded extends PackageDetailState {
   final PackageMetadata metadata;
-  const PackageDetailLoaded(this.metadata);
+  final bool likedByMe;
+  const PackageDetailLoaded(this.metadata, {this.likedByMe = false});
 }
 
 class PackageDetailNotFound extends PackageDetailState {

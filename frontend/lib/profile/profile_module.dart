@@ -1,6 +1,7 @@
 import 'package:flutter_modular/flutter_modular.dart';
 
 import '../core/session/guards.dart';
+import '../packages/liked/liked_packages_controller.dart';
 import '../packages/mine/my_packages_controller.dart';
 import '../tokens/tokens_controller.dart';
 import 'profile_controller.dart';
@@ -18,6 +19,7 @@ final profileModule = createModule(
       provide: (s) => s
         ..addChangeNotifier<ProfileController>(ProfileController.new)
         ..addChangeNotifier<MyPackagesController>(MyPackagesController.new)
+        ..addChangeNotifier<LikedPackagesController>(LikedPackagesController.new)
         ..addChangeNotifier<TokensController>(TokensController.new),
       child: (ctx, state) => const ProfilePage(),
     );

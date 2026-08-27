@@ -5,6 +5,7 @@ import '../../core/session/app_session.dart';
 import '../../core/session/session_state.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/validation/package_name.dart';
+import 'status_pill.dart';
 
 /// Barra de navegação comum às páginas. Reage à sessão e ao tema manualmente
 /// via `ValueListenableBuilder` sobre `inject<T>()` — não via `context.watch`,
@@ -48,7 +49,7 @@ class _AppTopBarState extends State<AppTopBar> {
         children: [
           TextButton.icon(
             onPressed: () => context.navigate('/'),
-            icon: const Icon(Icons.inventory_2_outlined),
+            icon: Image.asset('assets/logo.png', height: 22, fit: BoxFit.contain),
             label: const Text(
               'Dartisan',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -56,7 +57,7 @@ class _AppTopBarState extends State<AppTopBar> {
             style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(width: 8),
-          _SelfHostedBadge(),
+          const StatusPill(label: 'self-hosted', variant: StatusPillVariant.selfHosted),
           if (!onHome) ...[
             const SizedBox(width: 24),
             SizedBox(
@@ -118,29 +119,6 @@ class _AppTopBarState extends State<AppTopBar> {
         ),
         const SizedBox(width: 16),
       ],
-    );
-  }
-}
-
-class _SelfHostedBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)),
-      ),
-      child: Text(
-        'SELF-HOSTED',
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-      ),
     );
   }
 }

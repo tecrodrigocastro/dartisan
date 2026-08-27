@@ -5,8 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/session/app_session.dart';
+import '../../core/session/session_state.dart';
+import '../../core/theme/tokens.dart';
 import '../../shared/widgets/app_top_bar.dart';
+import '../../shared/widgets/status_pill.dart';
 import '../data/package_models.dart';
 import 'package_detail_controller.dart';
 import 'package_detail_state.dart';
@@ -30,6 +33,15 @@ class _PackageDetailPageState extends State<PackageDetailPage> {
     _controller.load(widget.name);
   }
 
+  void _onToggleLike() {
+    final session = inject<AppSession>();
+    if (session.value is! SessionAuthenticated) {
+      context.navigate('/login');
+      return;
+    }
+    _controller.toggleLike();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,7 +56,7 @@ class _PackageDetailPageState extends State<PackageDetailPage> {
               message: message,
               onRetry: () => _controller.load(widget.name),
             ),
-            PackageDetailLoaded(:final metadata) => _LoadedView(metadata: metadata),
+            PackageDetailLoaded() => _LoadedView(state: state, onToggleLike: _onToggleLike),
           };
         },
       ),
@@ -62,10 +74,10 @@ class _NotFoundView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search_off, size: 64, color: AppTheme.textMuted),
-          const SizedBox(height: 16),
+          Icon(Icons.search_off, size: 64, color: context.colors.textFaint),
+          const SizedBox(height: DartisanSpacing.s4),
           Text('Pacote "$name" não encontrado'),
-          const SizedBox(height: 16),
+          const SizedBox(height: DartisanSpacing.s4),
           OutlinedButton(
             onPressed: () => context.navigate('/'),
             child: const Text('Voltar pra busca'),
@@ -87,10 +99,10 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
-          const SizedBox(height: 16),
+          Icon(Icons.error_outline, size: 64, color: context.colors.danger),
+          const SizedBox(height: DartisanSpacing.s4),
           Text(message),
-          const SizedBox(height: 16),
+          const SizedBox(height: DartisanSpacing.s4),
           FilledButton(onPressed: onRetry, child: const Text('Tentar de novo')),
         ],
       ),
@@ -99,13 +111,25 @@ class _ErrorView extends StatelessWidget {
 }
 
 class _LoadedView extends StatelessWidget {
-  final PackageMetadata metadata;
-  const _LoadedView({required this.metadata});
+  final PackageDetailLoaded state;
+  final VoidCallback onToggleLike;
+  const _LoadedView({required this.state, required this.onToggleLike});
 
   static const _jsonEncoder = JsonEncoder.withIndent('  ');
 
+  /// Mostra só a parte local do e-mail ("ana" em vez de "ana@empresa.com") —
+  /// esse endpoint é público e sem autenticação, então o e-mail completo do
+  /// publicador não deveria vazar aqui. Correção de exposição encontrada na
+  /// auditoria; o ideal a médio prazo é um campo de display name no backend.
+  String? _displayHandle(String? uploadedBy) {
+    if (uploadedBy == null) return null;
+    final at = uploadedBy.indexOf('@');
+    return at > 0 ? uploadedBy.substring(0, at) : uploadedBy;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final metadata = state.metadata;
     final latest = metadata.latest;
     final pubspec = latest.pubspec;
     final description = pubspec['description'] as String?;
@@ -113,6 +137,8 @@ class _LoadedView extends StatelessWidget {
     final repository = pubspec['repository'] as String?;
     final sdkConstraint = (pubspec['environment'] as Map?)?['sdk'] as String?;
     final isWide = MediaQuery.sizeOf(context).width > 900;
+    final handle = _displayHandle(latest.uploadedBy);
+    final colors = context.colors;
 
     final mainColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,6 +148,11 @@ class _LoadedView extends StatelessWidget {
             Expanded(
               child: Text(metadata.name, style: Theme.of(context).textTheme.headlineMedium),
             ),
+            _LikeButton(
+              liked: state.likedByMe,
+              count: metadata.likeCount,
+              onTap: onToggleLike,
+            ),
             IconButton(
               tooltip: 'Copiar versão',
               icon: const Icon(Icons.copy_outlined, size: 20),
@@ -129,26 +160,40 @@ class _LoadedView extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: DartisanSpacing.s2),
         Wrap(
-          spacing: 8,
-          runSpacing: 4,
+          spacing: DartisanSpacing.s2,
+          runSpacing: DartisanSpacing.s2,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Chip(label: Text('v${latest.version}')),
-            Text(
-              'publicado por ${latest.uploadedBy ?? 'desconhecido'}',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            StatusPill(label: 'v${latest.version}', variant: StatusPillVariant.latest, icon: Icons.star),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 9,
+                  backgroundColor: colors.brassSoft,
+                  child: Text(
+                    (handle ?? '?').substring(0, 1).toUpperCase(),
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: colors.brass),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'publicado por ${handle ?? 'desconhecido'}',
+                  style: TextStyle(color: colors.textFaint, fontSize: 13),
+                ),
+              ],
             ),
           ],
         ),
         if (description != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: DartisanSpacing.s4),
           Text(description),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: DartisanSpacing.s6),
         Text('Versões', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
+        const SizedBox(height: DartisanSpacing.s2),
         Card(
           child: Column(
             children: metadata.versions
@@ -156,25 +201,33 @@ class _LoadedView extends StatelessWidget {
                 .toList(),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: DartisanSpacing.s6),
         Text('Metadados (pubspec.yaml)', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
+        const SizedBox(height: DartisanSpacing.s2),
         Card(
+          color: colors.codeBackground,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(DartisanSpacing.s4),
             child: SelectableText(
               _jsonEncoder.convert(pubspec),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+              style: DartisanFonts.mono(fontSize: 12.5, color: colors.textFaint, height: 1.6),
             ),
           ),
         ),
       ],
     );
 
-    final detailsCard = _DetailsCard(homepage: homepage, repository: repository, sdkConstraint: sdkConstraint);
+    final sidebar = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _DownloadsCard(total: metadata.downloadsTotal, daily: metadata.downloadsDaily),
+        const SizedBox(height: DartisanSpacing.s4),
+        _DetailsCard(homepage: homepage, repository: repository, sdkConstraint: sdkConstraint),
+      ],
+    );
 
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(DartisanSpacing.s5),
       children: [
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1100),
@@ -185,20 +238,137 @@ class _LoadedView extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(flex: 2, child: mainColumn),
-                        const SizedBox(width: 24),
-                        SizedBox(width: 280, child: detailsCard),
+                        const SizedBox(width: DartisanSpacing.s5),
+                        SizedBox(width: 280, child: sidebar),
                       ],
                     ),
                   )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [mainColumn, const SizedBox(height: 24), detailsCard],
+                    children: [mainColumn, const SizedBox(height: DartisanSpacing.s5), sidebar],
                   ),
           ),
         ),
       ],
     );
   }
+}
+
+class _LikeButton extends StatelessWidget {
+  final bool liked;
+  final int count;
+  final VoidCallback onTap;
+  const _LikeButton({required this.liked, required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final color = liked ? colors.danger : colors.textFaint;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: DartisanSpacing.s2, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(liked ? Icons.favorite : Icons.favorite_border, size: 18, color: color),
+            const SizedBox(width: 6),
+            Text('$count', style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DownloadsCard extends StatelessWidget {
+  final int total;
+  final List<DownloadDay> daily;
+  const _DownloadsCard({required this.total, required this.daily});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(DartisanSpacing.s4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Downloads', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: DartisanSpacing.s2),
+            Text(
+              '$total',
+              style: DartisanFonts.mono(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            Text('últimos 30 dias', style: TextStyle(color: colors.textFaint, fontSize: 12)),
+            const SizedBox(height: DartisanSpacing.s3),
+            SizedBox(
+              height: 40,
+              width: double.infinity,
+              child: CustomPaint(
+                painter: _SparklinePainter(
+                  values: daily.map((d) => d.count).toList(),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final List<int> values;
+  final Color color;
+  const _SparklinePainter({required this.values, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.isEmpty) return;
+    final maxValue = values.reduce((a, b) => a > b ? a : b);
+    if (maxValue == 0) {
+      final y = size.height - 1;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        Paint()
+          ..color = color.withValues(alpha: 0.3)
+          ..strokeWidth = 1.5,
+      );
+      return;
+    }
+
+    final stepX = size.width / (values.length - 1).clamp(1, double.infinity);
+    final points = [
+      for (var i = 0; i < values.length; i++)
+        Offset(i * stepX, size.height - (values[i] / maxValue) * size.height),
+    ];
+
+    final line = Path()..moveTo(points.first.dx, points.first.dy);
+    for (final p in points.skip(1)) {
+      line.lineTo(p.dx, p.dy);
+    }
+    canvas.drawPath(line, Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round);
+
+    final fill = Path.from(line)
+      ..lineTo(points.last.dx, size.height)
+      ..lineTo(points.first.dx, size.height)
+      ..close();
+    canvas.drawPath(fill, Paint()..color = color.withValues(alpha: 0.12));
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.color != color;
 }
 
 class _DetailsCard extends StatelessWidget {
@@ -215,16 +385,16 @@ class _DetailsCard extends StatelessWidget {
     }
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(DartisanSpacing.s4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Detalhes', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
+            const SizedBox(height: DartisanSpacing.s3),
             if (sdkConstraint != null) ...[
-              Text('SDK', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-              Text(sdkConstraint!),
-              const SizedBox(height: 12),
+              Text('SDK', style: TextStyle(color: context.colors.textFaint, fontSize: 12)),
+              Text(sdkConstraint!, style: DartisanFonts.mono(fontSize: 13)),
+              const SizedBox(height: DartisanSpacing.s3),
             ],
             if (homepage != null) _LinkRow(icon: Icons.home_outlined, label: 'Homepage', url: homepage!),
             if (repository != null)
@@ -245,13 +415,13 @@ class _LinkRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: DartisanSpacing.s2),
       child: InkWell(
         onTap: () => launchUrl(Uri.parse(url), webOnlyWindowName: '_blank'),
         child: Row(
           children: [
             Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 8),
+            const SizedBox(width: DartisanSpacing.s2),
             Text(label, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
           ],
         ),
@@ -267,10 +437,16 @@ class _VersionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return ListTile(
-      leading: isLatest ? const Icon(Icons.star, color: Colors.amber) : Icon(Icons.archive_outlined, color: AppTheme.textMuted),
-      title: Text(version.version),
-      subtitle: Text('sha256: ${_truncatedSha256(version.archiveSha256)}'),
+      leading: isLatest
+          ? Icon(Icons.star, color: colors.brass)
+          : Icon(Icons.archive_outlined, color: colors.textFaint),
+      title: Text(version.version, style: DartisanFonts.mono(fontSize: 14, fontWeight: FontWeight.w700)),
+      subtitle: Text(
+        'sha256: ${_truncatedSha256(version.archiveSha256)}',
+        style: DartisanFonts.mono(fontSize: 12, color: colors.textFaint),
+      ),
       trailing: IconButton(
         tooltip: 'Baixar tarball',
         icon: const Icon(Icons.download),

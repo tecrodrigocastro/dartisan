@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+import '../core/formatting/date_format.dart';
 import '../core/session/app_session.dart';
 import '../core/session/session_state.dart';
-import '../core/theme/app_theme.dart';
+import '../core/theme/tokens.dart';
 import '../shared/widgets/app_top_bar.dart';
+import '../shared/widgets/status_pill.dart';
 import 'data/me_models.dart';
 import 'profile_controller.dart';
 import 'profile_state.dart';
+import 'tabs/liked_tab.dart';
 import 'tabs/packages_tab.dart';
 import 'tabs/tokens_tab.dart';
 
@@ -32,7 +35,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     final session = inject<AppSession>().value;
     _canPublish = session is SessionAuthenticated &&
         (session.hasRole('publisher') || session.hasRole('admin'));
-    _tabController = TabController(length: _canPublish ? 2 : 1, vsync: this);
+    _tabController = TabController(length: _canPublish ? 3 : 2, vsync: this);
   }
 
   @override
@@ -67,6 +70,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             tabAlignment: TabAlignment.start,
             tabs: [
               const Tab(text: 'Pacotes'),
+              const Tab(text: 'Curtidas'),
               if (_canPublish) const Tab(text: 'Tokens'),
             ],
           ),
@@ -76,6 +80,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               controller: _tabController,
               children: [
                 const PackagesTab(),
+                const LikedTab(),
                 if (_canPublish) const TokensTab(),
               ],
             ),
@@ -116,16 +121,12 @@ class _ProfileHeader extends StatelessWidget {
                 children: [
                   Text(me.username, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(width: 8),
-                  Chip(
-                    label: Text(me.role, style: const TextStyle(fontSize: 11)),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                  ),
+                  StatusPill(label: me.role, variant: StatusPillVariant.role),
                 ],
               ),
               Text(
-                'membro desde ${me.createdAt.day.toString().padLeft(2, '0')}/${me.createdAt.month.toString().padLeft(2, '0')}/${me.createdAt.year}',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                'membro desde ${formatShortDate(me.createdAt)}',
+                style: TextStyle(color: context.colors.textFaint, fontSize: 13),
               ),
             ],
           ),

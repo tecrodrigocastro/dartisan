@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/tokens.dart';
 import '../../shared/widgets/app_top_bar.dart';
 import '../../shared/widgets/dotted_grid_background.dart';
-import '../data/package_models.dart';
+import '../../shared/widgets/package_card.dart';
 import 'package_search_controller.dart';
 import 'package_search_state.dart';
 import 'recent_packages_controller.dart';
@@ -54,25 +54,34 @@ class _PackageSearchPageState extends State<PackageSearchPage> {
         children: [
           DottedGridBackground(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 64, horizontal: 24),
+              padding: const EdgeInsets.symmetric(vertical: DartisanSpacing.s8, horizontal: DartisanSpacing.s5),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 560),
                   child: Column(
                     children: [
-                      Icon(Icons.inventory_2_outlined, size: 48, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(height: 16),
+                      Container(
+                        width: 64,
+                        height: 64,
+                        padding: const EdgeInsets.all(DartisanSpacing.s2),
+                        decoration: BoxDecoration(
+                          color: context.colors.accentSoft,
+                          borderRadius: BorderRadius.circular(DartisanRadii.m),
+                        ),
+                        child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+                      ),
+                      const SizedBox(height: DartisanSpacing.s4),
                       Text(
                         'Dartisan',
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.displaySmall,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: DartisanSpacing.s2),
                       Text(
                         'O registro de pacotes self-hosted pra Dart e Flutter.',
-                        style: TextStyle(color: AppTheme.textMuted),
+                        style: TextStyle(color: context.colors.textFaint),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: DartisanSpacing.s6),
                       ValueListenableBuilder<PackageSearchState>(
                         valueListenable: _searchController,
                         builder: (context, state, _) {
@@ -92,14 +101,14 @@ class _PackageSearchPageState extends State<PackageSearchPage> {
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: DartisanSpacing.s4),
                       ValueListenableBuilder<RecentPackagesState>(
                         valueListenable: _recentController,
                         builder: (context, state, _) {
                           final total = state is RecentPackagesLoaded ? state.list.total : null;
                           return Text(
                             total == null ? '' : '$total pacote${total == 1 ? '' : 's'} publicado${total == 1 ? '' : 's'}',
-                            style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                            style: TextStyle(color: context.colors.textFaint, fontSize: 13),
                           );
                         },
                       ),
@@ -110,7 +119,12 @@ class _PackageSearchPageState extends State<PackageSearchPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 48),
+            padding: const EdgeInsets.fromLTRB(
+              DartisanSpacing.s5,
+              0,
+              DartisanSpacing.s5,
+              DartisanSpacing.s7,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1100),
               child: Center(
@@ -125,7 +139,10 @@ class _PackageSearchPageState extends State<PackageSearchPage> {
                       RecentPackagesFailure() => const SizedBox.shrink(),
                       RecentPackagesLoaded(:final list) when list.packages.isEmpty =>
                         const SizedBox.shrink(),
-                      RecentPackagesLoaded(:final list) => _RecentPackagesGrid(packages: list.packages),
+                      RecentPackagesLoaded() => _RecentPackagesGrid(
+                        state: state,
+                        onLoadMore: _recentController.loadMore,
+                      ),
                     };
                   },
                 ),
@@ -139,62 +156,60 @@ class _PackageSearchPageState extends State<PackageSearchPage> {
 }
 
 class _RecentPackagesGrid extends StatelessWidget {
-  final List<PackageSummary> packages;
-  const _RecentPackagesGrid({required this.packages});
+  final RecentPackagesLoaded state;
+  final VoidCallback onLoadMore;
+
+  const _RecentPackagesGrid({required this.state, required this.onLoadMore});
 
   @override
   Widget build(BuildContext context) {
+    final packages = state.list.packages;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Pacotes recentes', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Pacotes recentes', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              '${packages.length} de ${state.list.total}',
+              style: TextStyle(color: context.colors.textFaint, fontSize: 12),
+            ),
+          ],
+        ),
+        const SizedBox(height: DartisanSpacing.s4),
         Wrap(
-          spacing: 16,
-          runSpacing: 16,
+          spacing: DartisanSpacing.s4,
+          runSpacing: DartisanSpacing.s4,
           children: packages
-              .map((p) => SizedBox(width: 320, child: _PackageCard(package: p)))
+              .map(
+                (p) => SizedBox(
+                  width: 300,
+                  child: PackageCard(
+                    package: p,
+                    onTap: () => context.navigate('/packages/${p.name}'),
+                  ),
+                ),
+              )
               .toList(),
         ),
-      ],
-    );
-  }
-}
-
-class _PackageCard extends StatelessWidget {
-  final PackageSummary package;
-  const _PackageCard({required this.package});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => context.navigate('/packages/${package.name}'),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.archive_outlined, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      package.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text('v${package.latestVersion}', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
-            ],
+        if (state.hasMore) ...[
+          const SizedBox(height: DartisanSpacing.s5),
+          Center(
+            child: OutlinedButton(
+              onPressed: state.loadingMore ? null : onLoadMore,
+              child: state.loadingMore
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Carregar mais'),
+            ),
           ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 }

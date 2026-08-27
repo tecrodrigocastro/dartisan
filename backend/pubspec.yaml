@@ -19,6 +19,7 @@ dependencies:
   pubspec_manager: ^1.0.0
   archive: ^3.6.1
   shelf_multipart: ^2.0.1
+  cryptography: ^2.9.0
 
 dev_dependencies:
   drift_dev: ^2.29.0

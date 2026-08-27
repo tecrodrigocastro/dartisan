@@ -9,6 +9,11 @@ abstract class AuthService {
   Future<Tokenization> login(String username, String password);
   Future<Tokenization> refresh(String refreshToken);
   Future<void> logout(String refreshToken);
+
+  /// Emite access+refresh token pra um usuário já resolvido (sem checar
+  /// senha) — usado pelo login social (GitHub), que resolve a identidade via
+  /// OAuth em vez de usuário/senha.
+  Future<Tokenization> issueTokensFor(AppUserDetails user);
 }
 
 @Service()
@@ -37,11 +42,15 @@ class AuthServiceImpl implements AuthService {
   @override
   Future<Tokenization> login(String username, String password) async {
     final user = await _userDetailsService.loadUserByUsername(username);
-    if (user == null || !_passwordEncoder.matches(password, user.password)) {
+    // password vazio = conta GitHub-only, sem senha local — nunca passa pro
+    // PasswordEncoder (bcrypt lança em hash malformado, não retorna false).
+    if (user == null ||
+        user.password.isEmpty ||
+        !_passwordEncoder.matches(password, user.password)) {
       throw ResponseException.unauthorized(_invalidCredentials);
     }
 
-    return _issueTokens(user as AppUserDetails);
+    return issueTokensFor(user as AppUserDetails);
   }
 
   @override
@@ -75,7 +84,7 @@ class AuthServiceImpl implements AuthService {
     // Rotaciona: revoga o antigo e emite um par novo — evita reuso indefinido
     // do mesmo refresh token.
     await _refreshTokens.revoke(storedToken.id);
-    return _issueTokens(user as AppUserDetails);
+    return issueTokensFor(user as AppUserDetails);
   }
 
   @override
@@ -87,7 +96,8 @@ class AuthServiceImpl implements AuthService {
     }
   }
 
-  Future<Tokenization> _issueTokens(AppUserDetails user) async {
+  @override
+  Future<Tokenization> issueTokensFor(AppUserDetails user) async {
     final tokens = _jwtService.generateToken(user);
 
     await _refreshTokens.insert(

@@ -23,7 +23,10 @@ class UserDetailsServiceImpl implements UserDetailsService {
     return AppUserDetails(
       id: user.id,
       username: user.username,
-      password: user.passwordHash,
+      // '' (nunca um hash bcrypt válido) marca conta GitHub-only, sem senha
+      // local — AuthServiceImpl.login trata isso antes de chamar o
+      // PasswordEncoder (bcrypt lança em hash malformado, não retorna false).
+      password: user.passwordHash ?? '',
       roles: [user.role],
     );
   }

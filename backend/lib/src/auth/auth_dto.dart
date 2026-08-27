@@ -15,3 +15,10 @@ class RefreshRequestDTO {
 
   RefreshRequestDTO({required this.refreshToken});
 }
+
+@DTO()
+class GithubExchangeRequestDTO {
+  final String code;
+
+  GithubExchangeRequestDTO({required this.code});
+}

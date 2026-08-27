@@ -16,3 +16,9 @@ build/
 
 # Backend uploads / local storage
 backend/uploads/
+
+# Logs de execução local
+*.log
+
+# macOS
+.DS_Store

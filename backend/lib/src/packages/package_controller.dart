@@ -1,5 +1,6 @@
 import 'package:vaden/vaden.dart';
 
+import '../auth/app_user_details.dart';
 import 'package_dto.dart';
 import 'package_service.dart';
 
@@ -52,5 +53,18 @@ class PackageController {
       archive.data,
       headers: {'Content-Type': 'application/octet-stream'},
     );
+  }
+
+  // POST (não GET) de propósito: o matcher `/api/packages/**` só libera GET
+  // sem autenticação (ver SecurityConfiguration) — POST cai no
+  // AnyRequest().authenticated() catch-all automaticamente, sem precisar de
+  // exceção na regra.
+  @Post('/<name>/likes')
+  Future<Map<String, dynamic>> toggleLike(
+    @Param('name') String name,
+    @Context('user') AppUserDetails currentUser,
+  ) async {
+    final (liked, count) = await _service.toggleLike(name, currentUser.id);
+    return {'liked': liked, 'count': count};
   }
 }

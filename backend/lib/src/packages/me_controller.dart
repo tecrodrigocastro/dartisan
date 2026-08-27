@@ -42,4 +42,23 @@ class MeController {
   ) {
     return _packageService.getPackagesUploadedBy(currentUser.id);
   }
+
+  @Get('/likes')
+  Future<List<PackageSummaryDTO>> myLikes(
+    @Context('user') AppUserDetails currentUser,
+  ) {
+    return _packageService.getLikedPackagesFor(currentUser.id);
+  }
+
+  // Sob /api/me (não /api/packages) de propósito — mesmo motivo do comentário
+  // acima da classe: GET /api/packages/**/* é público, então "curti isso?"
+  // não pode viver lá sem virar uma exceção na regra de segurança.
+  @Get('/packages/<name>/like')
+  Future<Map<String, dynamic>> isLiked(
+    @Param('name') String name,
+    @Context('user') AppUserDetails currentUser,
+  ) async {
+    final liked = await _packageService.isLikedByUser(name, currentUser.id);
+    return {'liked': liked};
+  }
 }

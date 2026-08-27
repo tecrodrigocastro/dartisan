@@ -1,4 +1,6 @@
 import 'package:backend/config/drift/app_database.dart';
+import 'package:backend/src/packages/package_download_repository.dart';
+import 'package:backend/src/packages/package_like_repository.dart';
 import 'package:backend/src/packages/package_repository.dart';
 import 'package:backend/src/packages/package_service.dart';
 import 'package:backend/src/packages/package_storage.dart';
@@ -27,6 +29,26 @@ class FakePackageRepository implements PackageRepository {
   }
 
   @override
+  Future<List<(PackageVersion, String?)>> findVersionsWithUploader(
+    String packageName,
+  ) async =>
+      versions
+          .where((v) => v.packageName == packageName)
+          .map((v) => (v, null))
+          .toList();
+
+  @override
+  Future<List<Package>> findPackagesUploadedByUser(int userId) async =>
+      package == null ? [] : [package!];
+
+  @override
+  Future<List<Package>> listRecent({required int limit, required int offset}) async =>
+      package == null ? [] : [package!];
+
+  @override
+  Future<int> countAll() async => package == null ? 0 : 1;
+
+  @override
   Future<void> saveNewVersion({
     required String packageName,
     required String version,
@@ -35,6 +57,7 @@ class FakePackageRepository implements PackageRepository {
     required String archivePath,
     required String latestVersion,
     int? uploaderTokenId,
+    int? uploaderUserId,
   }) async {
     package = Package(
       name: packageName,
@@ -52,9 +75,51 @@ class FakePackageRepository implements PackageRepository {
         archivePath: archivePath,
         uploadedAt: DateTime.now(),
         uploaderTokenId: uploaderTokenId,
+        uploaderUserId: uploaderUserId,
       ),
     ];
   }
+}
+
+class FakePackageLikeRepository implements PackageLikeRepository {
+  final Set<(String, int)> _likes = {};
+
+  @override
+  Future<bool> toggle(String packageName, int userId) async {
+    final key = (packageName, userId);
+    if (_likes.contains(key)) {
+      _likes.remove(key);
+      return false;
+    }
+    _likes.add(key);
+    return true;
+  }
+
+  @override
+  Future<int> countFor(String packageName) async =>
+      _likes.where((k) => k.$1 == packageName).length;
+
+  @override
+  Future<bool> isLikedBy(String packageName, int userId) async =>
+      _likes.contains((packageName, userId));
+
+  @override
+  Future<List<Package>> findLikedByUser(int userId) async => [];
+}
+
+class FakePackageDownloadRepository implements PackageDownloadRepository {
+  final Map<String, int> counts = {};
+
+  @override
+  Future<void> recordDownload(String packageName) async {
+    counts[packageName] = (counts[packageName] ?? 0) + 1;
+  }
+
+  @override
+  Future<List<DownloadDay>> dailyFor(String packageName, {int days = 30}) async => [];
+
+  @override
+  Future<int> totalFor(String packageName) async => counts[packageName] ?? 0;
 }
 
 class FakePackageStorage implements PackageStorage {
@@ -90,14 +155,18 @@ PackageVersion _version(String version) {
 void main() {
   late FakePackageRepository repository;
   late FakePackageStorage storage;
+  late FakePackageLikeRepository likes;
+  late FakePackageDownloadRepository downloads;
   late ApplicationSettings settings;
   late PackageServiceImpl service;
 
   setUp(() {
     repository = FakePackageRepository();
     storage = FakePackageStorage();
+    likes = FakePackageLikeRepository();
+    downloads = FakePackageDownloadRepository();
     settings = ApplicationSettings.load('application.yaml');
-    service = PackageServiceImpl(repository, storage, settings);
+    service = PackageServiceImpl(repository, storage, settings, likes, downloads);
   });
 
   test('throws 404 when package does not exist', () async {
@@ -191,7 +260,7 @@ void main() {
 
     expect(
       latest.archiveUrl,
-      'http://localhost/api/packages/meu_pacote/versions/1.0.0.tar.gz',
+      'http://localhost:8080/api/packages/meu_pacote/versions/1.0.0.tar.gz',
     );
     expect(latest.pubspec['name'], 'meu_pacote');
     expect(latest.pubspec['version'], '1.0.0');
@@ -217,5 +286,26 @@ void main() {
     final bytes = await archive.data.expand((chunk) => chunk).toList();
 
     expect(bytes, [1, 2, 3, 4]);
+  });
+
+  test('toggleLike curte na primeira chamada e descurte na segunda', () async {
+    final first = await service.toggleLike('meu_pacote', 1);
+    expect(first.$1, isTrue);
+    expect(first.$2, 1);
+
+    final second = await service.toggleLike('meu_pacote', 1);
+    expect(second.$1, isFalse);
+    expect(second.$2, 0);
+  });
+
+  test('getPackageArchive registra um download por chamada', () async {
+    final row = _version('1.0.0');
+    repository.versions = [row];
+    storage.files[row.archivePath] = [1, 2, 3];
+
+    await service.getPackageArchive('meu_pacote', '1.0.0');
+    await service.getPackageArchive('meu_pacote', '1.0.0');
+
+    expect(downloads.counts['meu_pacote'], 2);
   });
 }

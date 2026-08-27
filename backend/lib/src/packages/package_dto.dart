@@ -25,15 +25,35 @@ class PackageVersionDTO {
 }
 
 @DTO()
+class DownloadDayDTO {
+  final String date;
+  final int count;
+
+  DownloadDayDTO({required this.date, required this.count});
+}
+
+@DTO()
 class PackageMetadataDTO {
   final String name;
   final PackageVersionDTO latest;
   final List<PackageVersionDTO> versions;
 
+  @JsonKey('like_count')
+  final int likeCount;
+
+  @JsonKey('downloads_total')
+  final int downloadsTotal;
+
+  @JsonKey('downloads_daily')
+  final List<DownloadDayDTO> downloadsDaily;
+
   PackageMetadataDTO({
     required this.name,
     required this.latest,
     required this.versions,
+    required this.likeCount,
+    required this.downloadsTotal,
+    required this.downloadsDaily,
   });
 }
 

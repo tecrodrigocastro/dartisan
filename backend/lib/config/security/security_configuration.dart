@@ -17,10 +17,16 @@ class SecurityConfiguration {
   HttpSecurity httpSecurity() {
     return HttpSecurity([
       // Login/refresh/logout não podem exigir estar autenticado.
-      RequestMatcher('/auth/**/*').permitAll(),
-      RequestMatcher('/api/auth/**/*').permitAll(),
-      RequestMatcher('/docs/**/*').permitAll(),
-      RequestMatcher('/hello/**/*').permitAll(),
+      // '**' sem '/*' no final casa com o path exato e com qualquer
+      // profundidade abaixo dele (ver comentário abaixo em /api/packages/**)
+      // — necessário aqui porque '/docs' e '/hello/ping' são rotas exatas.
+      // '/api/auth/**' já cobre '/api/auth/github/*' (qualquer profundidade
+      // abaixo, ver comentário em '/api/packages/**' logo abaixo) — inclui
+      // login/callback/exchange do GitHub, que também precisam ser públicos.
+      RequestMatcher('/auth/**').permitAll(),
+      RequestMatcher('/api/auth/**').permitAll(),
+      RequestMatcher('/docs/**').permitAll(),
+      RequestMatcher('/hello/**').permitAll(),
       // Leitura de pacotes é pública por design (roadmap itens 1 e 2). Cobre
       // também os GETs do publish (/versions/new, /versions/newUploadFinish) e
       // GET /api/packages (listagem, item 6) — '**' (sem '/*' no final) casa

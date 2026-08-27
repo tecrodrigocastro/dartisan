@@ -31,7 +31,7 @@ storage:
     apiKey: 'my_api'
 
 env:
-  base_url: http://localhost
+  base_url: http://localhost:8080
   mode: debug
 
 security:

@@ -13,14 +13,19 @@ class PackageController {
 
   PackageController(this._service);
 
+  // Query params ficam String e o parse é manual (int.tryParse) porque o
+  // `_parse<PType>` gerado pelo Vaden faz `value as PType` quando PType não é
+  // exatamente `int`/`double`/`bool` — `int?` cai nesse else e o cast de
+  // String pra int? sempre lança. Bug do gerador (vaden_application.dart),
+  // não dá pra corrigir aqui — contornado no tipo do parâmetro.
   @Get('/')
   Future<PackageListDTO> listPackages(
-    @Query('limit') int? limit,
-    @Query('offset') int? offset,
+    @Query('limit') String? limit,
+    @Query('offset') String? offset,
   ) {
     return _service.listRecentPackages(
-      limit: limit ?? 12,
-      offset: offset ?? 0,
+      limit: int.tryParse(limit ?? '') ?? 12,
+      offset: int.tryParse(offset ?? '') ?? 0,
     );
   }
 

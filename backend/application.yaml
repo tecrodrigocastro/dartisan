@@ -32,6 +32,9 @@ storage:
 
 env:
   base_url: http://localhost:8080
+  # URL do frontend (Flutter Web) — usada só pra redirecionar de volta depois
+  # do callback do login GitHub, o backend não serve esses arquivos.
+  frontend_url: http://localhost:5050
   mode: debug
 
 security:
@@ -41,6 +44,13 @@ security:
   issuer: dartisan
   # dart_jsonwebtoken exige lista não-vazia (Audience assert) — não deixar [].
   audiences: ['dartisan-api']
+  github:
+    # Criar em https://github.com/settings/developers — Authorization callback
+    # URL precisa ser exatamente "{base_url}/api/auth/github/callback".
+    # NUNCA commitar valores reais aqui — preencha só localmente ou via
+    # variável de ambiente em produção.
+    client_id: ''      # via env var GITHUB_CLIENT_ID em produção
+    client_secret: ''  # via env var GITHUB_CLIENT_SECRET em produção
 
 publish:
   max_tarball_size_bytes: 104857600  # 100 MiB, mesma ordem de grandeza do pub.dev

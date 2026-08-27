@@ -1,6 +1,6 @@
 # Dartisan — pub.dev self-hosted
 
-> 🚧 **Em desenvolvimento.** O núcleo do protocolo `pub` (metadados, download, publicação), autenticação e o frontend web já estão implementados — falta o fallback para o pub.dev oficial (ver roadmap abaixo). Não use em produção ainda.
+> 🚧 **Em desenvolvimento.** O núcleo do protocolo `pub` (metadados, download, publicação), autenticação (usuário/senha e GitHub OAuth), frontend web e publicação a partir de repositórios privados do GitHub já estão implementados — falta o fallback para o pub.dev oficial (ver roadmap abaixo). Não use em produção ainda. Veja o [CHANGELOG](CHANGELOG.md) pra acompanhar o que foi feito.
 
 ## O que é
 
@@ -32,7 +32,7 @@ Produto **open source**, feito para a comunidade, cobrindo o fluxo essencial do 
 | Backend | [Vaden](https://github.com/Flutterando/vaden) (framework Dart inspirado em Spring Boot) |
 | Banco de dados | PostgreSQL, via [Drift](https://drift.simonbinder.eu/) como ORM/query builder |
 | Frontend | Flutter (Web) |
-| Autenticação | JWT (access + refresh token), roles (`admin`, `publisher`, `reader`), tokens dedicados para publicação via CLI |
+| Autenticação | JWT (access + refresh token), roles (`admin`, `publisher`, `reader`), tokens dedicados para publicação via CLI, login via GitHub OAuth |
 
 ### Dependências de referência reaproveitáveis
 
@@ -54,6 +54,21 @@ Produto **open source**, feito para a comunidade, cobrindo o fluxo essencial do 
 - [ ] Fallback para pub.dev oficial
 - [x] Autenticação (JWT + roles)
 - [x] Frontend Flutter Web (busca, página de pacote, painel de tokens)
+
+## Além do roadmap inicial
+
+Funcionalidades que foram além do escopo original dos 6 itens acima —
+detalhes em cada entrada do [CHANGELOG](CHANGELOG.md):
+
+- **Login via GitHub OAuth**, com criação automática de conta (role
+  `reader` por padrão)
+- **Publicar pacotes a partir de repositórios privados do GitHub**, sem
+  precisar do `dart pub publish` via CLI — conecta a conta, escolhe
+  repositório/branch/tag, importa e publica
+- **Curtidas** e **contagem de downloads** (com sparkline dos últimos 30
+  dias) por pacote
+- **Design system próprio** (paleta "oficina de latão", tipografia,
+  logo) no lugar do visual genérico inicial
 
 ## Licença
 

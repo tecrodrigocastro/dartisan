@@ -1,6 +1,6 @@
 # Dartisan — pub.dev self-hosted
 
-> 🚧 **Em desenvolvimento inicial.** Ainda não há funcionalidades do roadmap implementadas — o backend é hoje apenas um scaffold (configuração de banco, OpenAPI, etc.). Não use em produção ainda.
+> 🚧 **Em desenvolvimento.** O núcleo do protocolo `pub` (metadados, download, publicação), autenticação e o frontend web já estão implementados — falta o fallback para o pub.dev oficial (ver roadmap abaixo). Não use em produção ainda.
 
 ## O que é
 
@@ -48,12 +48,12 @@ Produto **open source**, feito para a comunidade, cobrindo o fluxo essencial do 
 
 ## Roadmap inicial
 
-- [ ] Endpoint de metadados de pacote (`GET /api/packages/{name}`)
-- [ ] Download de tarball de versão
-- [ ] Fluxo de publicação (`POST /api/packages/versions/new`)
+- [x] Endpoint de metadados de pacote (`GET /api/packages/{name}`)
+- [x] Download de tarball de versão
+- [x] Fluxo de publicação (`POST /api/packages/versions/new`)
 - [ ] Fallback para pub.dev oficial
-- [ ] Autenticação (JWT + roles)
-- [ ] Frontend Flutter Web (busca, página de pacote, painel de tokens)
+- [x] Autenticação (JWT + roles)
+- [x] Frontend Flutter Web (busca, página de pacote, painel de tokens)
 
 ## Licença
 
@@ -61,4 +61,4 @@ MIT — em linha com o restante do ecossistema Dart/Flutter (incluindo dependên
 
 ## Como contribuir
 
-O projeto ainda está em fase inicial (scaffold do backend, sem itens do roadmap implementados) e **não está aceitando contribuições externas por enquanto**. Guidelines de contribuição, setup local e como rodar os testes serão publicados assim que o fluxo essencial do protocolo `pub` estiver funcional.
+O fluxo essencial do protocolo `pub` (metadados, download, publicação), autenticação e o frontend web já estão funcionais, mas o projeto **ainda não está aceitando contribuições externas por enquanto**. Guidelines de contribuição, setup local e como rodar os testes serão publicados em breve.

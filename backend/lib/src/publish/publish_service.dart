@@ -25,6 +25,16 @@ abstract class PublishService {
   /// Passo 3.3 — valida e persiste. Lança ResponseException(400) se algo
   /// não bater com as regras do protocolo.
   Future<void> finishUpload(String sessionId, {required int maxSizeBytes});
+
+  /// Persiste um artefato já validado — extraído de [finishUpload] pra ser
+  /// reusado pelo import via GitHub (GithubImportService), que valida um
+  /// tarball reempacotado em vez de vir do handshake de 3 passos do CLI.
+  Future<void> persistArtifact({
+    required PublishArtifact artifact,
+    required List<int> tarballBytes,
+    int? uploaderTokenId,
+    int? uploaderUserId,
+  });
 }
 
 @Service()
@@ -130,6 +140,20 @@ class PublishServiceImpl implements PublishService {
       _sessions.remove(sessionId);
     }
 
+    await persistArtifact(
+      artifact: artifact,
+      tarballBytes: tarballBytes,
+      uploaderTokenId: session.publishTokenId,
+    );
+  }
+
+  @override
+  Future<void> persistArtifact({
+    required PublishArtifact artifact,
+    required List<int> tarballBytes,
+    int? uploaderTokenId,
+    int? uploaderUserId,
+  }) async {
     final archivePath = '${artifact.packageName}/${artifact.version}.tar.gz';
     await _storage.write(archivePath, Stream.value(tarballBytes));
 
@@ -148,7 +172,8 @@ class PublishServiceImpl implements PublishService {
       archiveSha256: artifact.archiveSha256,
       archivePath: archivePath,
       latestVersion: pickLatestVersion(sortVersions(allVersions)),
-      uploaderTokenId: session.publishTokenId,
+      uploaderTokenId: uploaderTokenId,
+      uploaderUserId: uploaderUserId,
     );
   }
 

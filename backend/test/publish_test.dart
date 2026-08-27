@@ -81,6 +81,32 @@ class FakeUserRepository implements UserRepository {
     }
     return null;
   }
+
+  @override
+  Future<User?> findByGithubId(int githubId) async {
+    for (final u in users) {
+      if (u.githubId == githubId) return u;
+    }
+    return null;
+  }
+
+  @override
+  Future<User> createGithubUser({
+    required int githubId,
+    required String username,
+    required String role,
+  }) async {
+    final user = User(
+      id: users.length + 1,
+      username: username,
+      passwordHash: null,
+      role: role,
+      createdAt: DateTime.now(),
+      githubId: githubId,
+    );
+    users.add(user);
+    return user;
+  }
 }
 
 void main() {
@@ -336,6 +362,25 @@ void main() {
 
       expect(packages.package?.latestVersion, '2.0.0');
       expect(packages.versions.map((v) => v.version), containsAll(['2.0.0', '0.5.0']));
+    });
+
+    test('persistArtifact grava uploaderUserId quando não há publish token (import GitHub)',
+        () async {
+      final tarball = buildTarball({'pubspec.yaml': _validPubspec});
+      final artifact = await PublishValidator(packages).validate(
+        tarballBytes: tarball,
+        maxSizeBytes: 1000000,
+      );
+
+      await service.persistArtifact(
+        artifact: artifact,
+        tarballBytes: tarball,
+        uploaderUserId: 42,
+      );
+
+      final saved = packages.versions.single;
+      expect(saved.uploaderUserId, 42);
+      expect(saved.uploaderTokenId, isNull);
     });
   });
 }

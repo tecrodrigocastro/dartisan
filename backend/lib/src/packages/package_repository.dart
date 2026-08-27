@@ -27,6 +27,8 @@ abstract class PackageRepository {
 
   /// Insere a nova versão e atualiza (ou cria) o Package correspondente com
   /// [latestVersion] já recalculado — atômico, usado pelo publish (item 3).
+  /// [uploaderTokenId]/[uploaderUserId] nunca vêm os dois setados: publish
+  /// via CLI usa o primeiro, import via GitHub (sem publish token) o segundo.
   Future<void> saveNewVersion({
     required String packageName,
     required String version,
@@ -35,6 +37,7 @@ abstract class PackageRepository {
     required String archivePath,
     required String latestVersion,
     int? uploaderTokenId,
+    int? uploaderUserId,
   });
 }
 
@@ -61,11 +64,15 @@ class DriftPackageRepository implements PackageRepository {
   Future<List<(PackageVersion, String?)>> findVersionsWithUploader(
     String packageName,
   ) async {
-    // leftOuterJoin (não innerJoin) porque uploaderTokenId é nullable — uma
-    // versão sem token associado (ou com token já apagado) ainda deve
-    // aparecer, só sem uploader. Sem GROUP BY aqui, então nenhum problema em
-    // selecionar todas as colunas das 3 tabelas (diferente do que rolou em
-    // findPackagesUploadedByUser).
+    // leftOuterJoin (não innerJoin) porque uploaderTokenId/uploaderUserId são
+    // nullable e nunca os dois setados na mesma versão — uma versão sem
+    // nenhum dos dois (ou com o token/usuário já apagado) ainda deve
+    // aparecer, só sem uploader. Segundo alias de Users porque a tabela
+    // entra no join duas vezes (via token e direto). Sem GROUP BY aqui,
+    // então nenhum problema em selecionar todas as colunas (diferente do
+    // que rolou em findPackagesUploadedByUser).
+    final directUploader = _db.users.createAlias('direct_uploader');
+
     final query =
         _db.select(_db.packageVersions).join([
           leftOuterJoin(
@@ -78,6 +85,10 @@ class DriftPackageRepository implements PackageRepository {
             _db.users,
             _db.users.id.equalsExp(_db.publishTokens.userId),
           ),
+          leftOuterJoin(
+            directUploader,
+            directUploader.id.equalsExp(_db.packageVersions.uploaderUserId),
+          ),
         ])..where(_db.packageVersions.packageName.equals(packageName));
 
     final rows = await query.get();
@@ -85,7 +96,8 @@ class DriftPackageRepository implements PackageRepository {
         .map(
           (row) => (
             row.readTable(_db.packageVersions),
-            row.readTableOrNull(_db.users)?.username,
+            row.readTableOrNull(_db.users)?.username ??
+                row.readTableOrNull(directUploader)?.username,
           ),
         )
         .toList();
@@ -153,6 +165,7 @@ class DriftPackageRepository implements PackageRepository {
     required String archivePath,
     required String latestVersion,
     int? uploaderTokenId,
+    int? uploaderUserId,
   }) {
     return _db.transaction(() async {
       await _db
@@ -174,6 +187,7 @@ class DriftPackageRepository implements PackageRepository {
               archiveSha256: archiveSha256,
               archivePath: archivePath,
               uploaderTokenId: Value(uploaderTokenId),
+              uploaderUserId: Value(uploaderUserId),
             ),
           );
     });

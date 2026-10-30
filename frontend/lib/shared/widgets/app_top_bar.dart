@@ -5,6 +5,7 @@ import '../../core/session/app_session.dart';
 import '../../core/session/session_state.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/validation/package_name.dart';
+import '../../core/theme/tokens.dart';
 import 'status_pill.dart';
 
 /// Barra de navegação comum às páginas. Reage à sessão e ao tema manualmente
@@ -14,7 +15,7 @@ class AppTopBar extends StatefulWidget implements PreferredSizeWidget {
   const AppTopBar({super.key});
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 1);
 
   @override
   State<AppTopBar> createState() => _AppTopBarState();
@@ -43,7 +44,15 @@ class _AppTopBarState extends State<AppTopBar> {
     final theme = inject<ThemeController>();
     final onHome = context.routeState().uri.path == '/';
 
+    final colors = context.colors;
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final path = context.routeState().uri.path;
+
     return AppBar(
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Divider(height: 1, thickness: 1, color: Theme.of(context).dividerColor),
+      ),
       titleSpacing: 16,
       title: Row(
         children: [
@@ -56,9 +65,18 @@ class _AppTopBarState extends State<AppTopBar> {
             ),
             style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.onSurface),
           ),
-          const SizedBox(width: 8),
-          const StatusPill(label: 'self-hosted', variant: StatusPillVariant.selfHosted),
-          if (!onHome) ...[
+          if (wide) ...[
+            const SizedBox(width: 8),
+            const StatusPill(label: 'self-hosted', variant: StatusPillVariant.selfHosted),
+            const SizedBox(width: 16),
+            _NavLink(label: 'Pacotes', active: path == '/', onTap: () => context.navigate('/')),
+            _NavLink(
+              label: 'Publicar',
+              active: path.startsWith('/publish'),
+              onTap: () => context.navigate('/publish/github'),
+            ),
+          ],
+          if (!onHome && wide) ...[
             const SizedBox(width: 24),
             SizedBox(
               width: 320,
@@ -84,6 +102,10 @@ class _AppTopBarState extends State<AppTopBar> {
         ValueListenableBuilder<ThemeMode>(
           valueListenable: theme,
           builder: (context, mode, _) => IconButton(
+            style: IconButton.styleFrom(
+              side: BorderSide(color: colors.borderStrong),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DartisanRadii.m - 2)),
+            ),
             tooltip: 'Alternar tema',
             icon: Icon(mode == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
             onPressed: theme.toggle,
@@ -119,6 +141,28 @@ class _AppTopBarState extends State<AppTopBar> {
         ),
         const SizedBox(width: 16),
       ],
+    );
+  }
+}
+
+class _NavLink extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _NavLink({required this.label, required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        foregroundColor: active ? Theme.of(context).colorScheme.onSurface : colors.textFaint,
+        backgroundColor: active ? Theme.of(context).colorScheme.surface : null,
+        textStyle: TextStyle(fontSize: 14, fontWeight: active ? FontWeight.w600 : FontWeight.w500),
+      ),
+      child: Text(label),
     );
   }
 }

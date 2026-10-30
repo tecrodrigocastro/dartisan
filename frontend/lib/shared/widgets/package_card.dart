@@ -5,7 +5,7 @@ import '../../core/theme/tokens.dart';
 import '../../packages/data/package_models.dart';
 
 /// Card de pacote reutilizado pela busca (pacotes recentes) e por "Meus
-/// pacotes" — antes cada tela desenhava o próprio card do zero.
+/// pacotes": inicial em quadrado suave, nome mono, pill de versão e data.
 class PackageCard extends StatelessWidget {
   final PackageSummary package;
   final VoidCallback onTap;
@@ -15,40 +15,59 @@ class PackageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final primary = Theme.of(context).colorScheme.primary;
+    final initial = package.name.isEmpty ? '?' : package.name[0].toUpperCase();
 
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(DartisanRadii.m),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(DartisanSpacing.s4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: DartisanSpacing.s2),
-                  Expanded(
-                    child: Text(
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.accentSoft,
+                  borderRadius: BorderRadius.circular(DartisanRadii.m - 2),
+                ),
+                child: Text(
+                  initial,
+                  style: DartisanFonts.mono(fontSize: 16, fontWeight: FontWeight.w600, color: primary),
+                ),
+              ),
+              const SizedBox(width: DartisanSpacing.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       package.name,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      style: DartisanFonts.mono(fontSize: 14, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      formatShortDate(package.createdAt),
+                      style: TextStyle(fontSize: 12, color: colors.textFaint),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: DartisanSpacing.s2),
-              Text(
-                'v${package.latestVersion}  ·  ${formatShortDate(package.createdAt)}',
-                style: DartisanFonts.mono(fontSize: 12, color: colors.textFaint),
+              const SizedBox(width: DartisanSpacing.s2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: colors.accentSoft,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'v${package.latestVersion}',
+                  style: DartisanFonts.mono(fontSize: 12, fontWeight: FontWeight.w600, color: primary),
+                ),
               ),
             ],
           ),

@@ -4,6 +4,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 import '../../core/formatting/date_format.dart';
 import '../../core/theme/tokens.dart';
+import '../../shared/widgets/status_pill.dart';
 import '../../tokens/data/publish_token_models.dart';
 import '../../tokens/tokens_controller.dart';
 import '../../tokens/tokens_state.dart';
@@ -72,7 +73,7 @@ class _TokensTabState extends State<TokensTab> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Tokens de publicação', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Tokens de publicação', style: Theme.of(context).textTheme.headlineSmall),
                   FilledButton.icon(
                     onPressed: _createToken,
                     icon: const Icon(Icons.add),
@@ -101,20 +102,30 @@ class _TokenTile extends StatelessWidget {
     final colors = context.colors;
     return Card(
       child: ListTile(
-        leading: Icon(
-          token.isRevoked ? Icons.block : Icons.vpn_key,
-          color: token.isRevoked ? colors.textFaint : colors.success,
+        contentPadding: const EdgeInsets.symmetric(horizontal: DartisanSpacing.s4, vertical: 4),
+        title: Row(
+          children: [
+            Text('Token #${token.id}', style: DartisanFonts.mono(fontSize: 14, fontWeight: FontWeight.w600)),
+            const SizedBox(width: DartisanSpacing.s3),
+            token.isRevoked
+                ? const StatusPill(label: 'revogado', variant: StatusPillVariant.revoked)
+                : const StatusPill(label: 'ativo', variant: StatusPillVariant.latest),
+          ],
         ),
-        title: Text('Token #${token.id}'),
         subtitle: Text(
           token.isRevoked
               ? 'Revogado em ${formatDateTime(token.revokedAt!)}'
               : 'Criado em ${formatDateTime(token.createdAt)}'
                   '${token.lastUsedAt != null ? ' · último uso ${formatDateTime(token.lastUsedAt!)}' : ''}',
+          style: TextStyle(color: colors.textFaint, fontSize: 13),
         ),
         trailing: token.isRevoked
             ? null
-            : IconButton(icon: const Icon(Icons.delete_outline), onPressed: onRevoke),
+            : TextButton(
+                onPressed: onRevoke,
+                style: TextButton.styleFrom(foregroundColor: colors.danger),
+                child: const Text('Revogar'),
+              ),
       ),
     );
   }
@@ -132,18 +143,27 @@ class _CreatedTokenDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Copie agora — este token não será mostrado de novo.',
-            style: TextStyle(fontWeight: FontWeight.bold, color: context.colors.danger),
-          ),
-          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(DartisanSpacing.s3),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(4),
+              color: context.colors.brassSoft,
+              borderRadius: BorderRadius.circular(DartisanRadii.m - 2),
+              border: Border.all(color: context.colors.brass.withValues(alpha: 0.4)),
             ),
-            child: SelectableText(created.token, style: const TextStyle(fontFamily: 'monospace')),
+            child: Text(
+              'Copie agora: este token não será mostrado de novo.',
+              style: TextStyle(fontWeight: FontWeight.w600, color: context.colors.brass),
+            ),
+          ),
+          const SizedBox(height: DartisanSpacing.s3),
+          Container(
+            padding: const EdgeInsets.all(DartisanSpacing.s3),
+            decoration: BoxDecoration(
+              color: context.colors.codeBackground,
+              borderRadius: BorderRadius.circular(DartisanRadii.m - 2),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: SelectableText(created.token, style: DartisanFonts.mono(fontSize: 13)),
           ),
         ],
       ),

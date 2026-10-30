@@ -85,7 +85,7 @@ class _NotConnectedView extends StatelessWidget {
           const SizedBox(height: DartisanSpacing.s4),
           Text(
             'Conecte sua conta do GitHub',
-            style: Theme.of(context).textTheme.titleLarge,
+            style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: DartisanSpacing.s2),
           Text(
@@ -124,108 +124,257 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-class _ReadyView extends StatelessWidget {
+class _ReadyView extends StatefulWidget {
   final GithubImportReady state;
   final GithubImportController controller;
   const _ReadyView({required this.state, required this.controller});
 
   @override
+  State<_ReadyView> createState() => _ReadyViewState();
+}
+
+class _ReadyViewState extends State<_ReadyView> {
+  bool _showTags = false;
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
+    final controller = widget.controller;
     final colors = context.colors;
     final canSubmit =
         state.selectedRepo != null && state.selectedRef != null && !state.submitting;
+    final refNames = _showTags ? (state.refs?.tags ?? const <String>[]) : (state.refs?.branches ?? const <String>[]);
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Padding(
-          padding: const EdgeInsets.all(DartisanSpacing.s5),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Importar do GitHub', style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: DartisanSpacing.s2),
-              Text(
-                'Escolha um repositório e uma versão (branch ou tag) pra publicar.',
-                style: TextStyle(color: colors.textFaint),
-              ),
-              const SizedBox(height: DartisanSpacing.s6),
-              Text('Repositório', style: TextStyle(fontSize: 12, color: colors.textFaint)),
-              const SizedBox(height: DartisanSpacing.s2),
-              DropdownButtonFormField<GithubRepo>(
-                initialValue: state.selectedRepo,
-                isExpanded: true,
-                hint: const Text('Selecione um repositório'),
-                items: state.repos
-                    .map(
-                      (repo) => DropdownMenuItem(
-                        value: repo,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+    final repoColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel('Repositório'),
+        for (final repo in state.repos)
+          _OptionTile(
+            icon: repo.private ? Icons.lock_outline : Icons.public,
+            label: repo.fullName,
+            trailing: repo.private ? 'privado' : 'público',
+            selected: state.selectedRepo == repo,
+            onTap: () => controller.selectRepo(repo),
+          ),
+      ],
+    );
+
+    final refColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel('Versão'),
+        SegmentedButton<bool>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: false, label: Text('Branches')),
+            ButtonSegment(value: true, label: Text('Tags')),
+          ],
+          selected: {_showTags},
+          onSelectionChanged: (v) => setState(() => _showTags = v.first),
+        ),
+        const SizedBox(height: DartisanSpacing.s3),
+        if (state.selectedRepo == null)
+          Text('Escolha um repositório primeiro.', style: TextStyle(color: colors.textFaint))
+        else if (state.loadingRefs)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: DartisanSpacing.s3),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (refNames.isEmpty)
+          Text(
+            _showTags ? 'Nenhuma tag neste repositório.' : 'Nenhuma branch encontrada.',
+            style: TextStyle(color: colors.textFaint),
+          )
+        else
+          for (final name in refNames)
+            _OptionTile(
+              icon: _showTags ? Icons.sell_outlined : Icons.call_split,
+              label: name,
+              selected: state.selectedRef == name,
+              onTap: () => controller.selectRef(name),
+            ),
+      ],
+    );
+
+    return SingleChildScrollView(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: Padding(
+            padding: const EdgeInsets.all(DartisanSpacing.s5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Importar do GitHub', style: Theme.of(context).textTheme.headlineLarge),
+                const SizedBox(height: DartisanSpacing.s2),
+                Text(
+                  'Escolha um repositório e uma versão (branch ou tag). O Dartisan valida o pubspec e publica o pacote por você.',
+                  style: TextStyle(color: colors.textFaint, fontSize: 16),
+                ),
+                const SizedBox(height: DartisanSpacing.s5),
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(DartisanSpacing.s5),
+                        child: LayoutBuilder(
+                          builder: (context, box) {
+                            if (box.maxWidth < 640) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  repoColumn,
+                                  const SizedBox(height: DartisanSpacing.s5),
+                                  refColumn,
+                                ],
+                              );
+                            }
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: repoColumn),
+                                const SizedBox(width: DartisanSpacing.s5),
+                                Expanded(child: refColumn),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: DartisanSpacing.s5,
+                          vertical: DartisanSpacing.s4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.codeBackground,
+                          border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+                        ),
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          runSpacing: DartisanSpacing.s3,
+                          spacing: DartisanSpacing.s4,
                           children: [
-                            Icon(
-                              repo.private ? Icons.lock_outline : Icons.public,
-                              size: 14,
-                              color: colors.textFaint,
+                            Text.rich(
+                              TextSpan(
+                                style: DartisanFonts.mono(fontSize: 13, color: colors.textFaint),
+                                children: [
+                                  TextSpan(
+                                    text: state.selectedRepo?.fullName ?? 'nenhum repositório',
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                                  ),
+                                  if (state.selectedRef != null) ...[
+                                    TextSpan(text: ' @ ', style: TextStyle(color: colors.brass)),
+                                    TextSpan(
+                                      text: state.selectedRef,
+                                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                            const SizedBox(width: 6),
-                            Flexible(child: Text(repo.fullName, overflow: TextOverflow.ellipsis)),
+                            FilledButton(
+                              onPressed: canSubmit ? controller.submit : null,
+                              child: state.submitting
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Text('Importar e publicar'),
+                            ),
                           ],
                         ),
                       ),
-                    )
-                    .toList(),
-                onChanged: (repo) {
-                  if (repo != null) controller.selectRepo(repo);
-                },
-              ),
-              const SizedBox(height: DartisanSpacing.s4),
-              Text('Versão', style: TextStyle(fontSize: 12, color: colors.textFaint)),
-              const SizedBox(height: DartisanSpacing.s2),
-              if (state.loadingRefs)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: DartisanSpacing.s3),
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                )
-              else
-                DropdownButtonFormField<String>(
-                  initialValue: state.selectedRef,
-                  isExpanded: true,
-                  hint: const Text('Selecione uma branch ou tag'),
-                  items: [
-                    ...?state.refs?.branches.map(
-                      (b) => DropdownMenuItem(value: b, child: Text('🌿 $b')),
-                    ),
-                    ...?state.refs?.tags.map(
-                      (t) => DropdownMenuItem(value: t, child: Text('🏷 $t')),
-                    ),
-                  ],
-                  onChanged: state.selectedRepo == null
-                      ? null
-                      : (ref) {
-                          if (ref != null) controller.selectRef(ref);
-                        },
+                    ],
+                  ),
                 ),
-              if (state.error != null) ...[
-                const SizedBox(height: DartisanSpacing.s3),
-                Text(state.error!, style: TextStyle(color: colors.danger)),
+                if (state.error != null) ...[
+                  const SizedBox(height: DartisanSpacing.s3),
+                  Text(state.error!, style: TextStyle(color: colors.danger)),
+                ],
               ],
-              const SizedBox(height: DartisanSpacing.s6),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: canSubmit ? controller.submit : null,
-                  child: state.submitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Importar e publicar'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: DartisanSpacing.s3),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.7,
+          color: context.colors.textFaint,
+        ),
+      ),
+    );
+  }
+}
+
+class _OptionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? trailing;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _OptionTile({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final primary = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: DartisanSpacing.s2),
+      child: Material(
+        color: selected ? colors.accentSoft : Theme.of(context).scaffoldBackgroundColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DartisanRadii.m - 2),
+          side: BorderSide(color: selected ? primary : Theme.of(context).dividerColor),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(DartisanRadii.m - 2),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: colors.textFaint),
+                const SizedBox(width: DartisanSpacing.s3),
+                Expanded(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: DartisanFonts.mono(fontSize: 13.5),
+                  ),
                 ),
-              ),
-            ],
+                if (trailing != null)
+                  Text(
+                    trailing!,
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colors.textFaint),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

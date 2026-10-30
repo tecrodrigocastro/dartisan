@@ -64,15 +64,24 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               ProfileLoaded(:final me) => _ProfileHeader(me: me),
             },
           ),
-          TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: [
-              const Tab(text: 'Pacotes'),
-              const Tab(text: 'Curtidas'),
-              if (_canPublish) const Tab(text: 'Tokens'),
-            ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: ((MediaQuery.sizeOf(context).width - 1200) / 2).clamp(0.0, double.infinity) +
+                    DartisanSpacing.s5,
+              ),
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: [
+                  const Tab(text: 'Pacotes'),
+                  const Tab(text: 'Curtidas'),
+                  if (_canPublish) const Tab(text: 'Tokens'),
+                ],
+              ),
+            ),
           ),
           const Divider(height: 1),
           Expanded(
@@ -97,40 +106,57 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-            child: Text(
-              me.username.isNotEmpty ? me.username[0].toUpperCase() : '?',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
+    final colors = context.colors;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            DartisanSpacing.s5,
+            DartisanSpacing.s6,
+            DartisanSpacing.s5,
+            DartisanSpacing.s3,
           ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Text(me.username, style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(width: 8),
-                  StatusPill(label: me.role, variant: StatusPillVariant.role),
-                ],
+              Container(
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.brassSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  me.username.isNotEmpty ? me.username[0].toUpperCase() : '?',
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: colors.brass),
+                ),
               ),
-              Text(
-                'membro desde ${formatShortDate(me.createdAt)}',
-                style: TextStyle(color: context.colors.textFaint, fontSize: 13),
+              const SizedBox(width: DartisanSpacing.s4),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: DartisanSpacing.s3,
+                      runSpacing: DartisanSpacing.s1,
+                      children: [
+                        Text(me.username, style: Theme.of(context).textTheme.headlineMedium),
+                        StatusPill(label: me.role, variant: StatusPillVariant.role),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'membro desde ${formatShortDate(me.createdAt)}',
+                      style: TextStyle(color: colors.textFaint, fontSize: 13),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

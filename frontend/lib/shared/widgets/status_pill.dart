@@ -42,7 +42,7 @@ class StatusPill extends StatelessWidget {
           ],
           Text(
             uppercase ? label.toUpperCase() : label,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.3, color: fg),
+            style: DartisanFonts.mono(fontSize: 11.5, fontWeight: FontWeight.w600, color: fg),
           ),
         ],
       ),

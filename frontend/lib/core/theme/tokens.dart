@@ -32,7 +32,7 @@ class DartisanColors extends ThemeExtension<DartisanColors> {
   static const dark = DartisanColors(
     surface2: Color(0xFF262119),
     borderStrong: Color(0xFF493F2E),
-    textFaint: Color(0xFF756B5B),
+    textFaint: Color(0xFFA69C8A),
     accentSoft: Color(0xFF1C332E),
     brass: Color(0xFFD4A24E),
     brassSoft: Color(0xFF362B18),
@@ -44,7 +44,7 @@ class DartisanColors extends ThemeExtension<DartisanColors> {
   static const light = DartisanColors(
     surface2: Color(0xFFEFE9DC),
     borderStrong: Color(0xFFC7BBA0),
-    textFaint: Color(0xFF948A78),
+    textFaint: Color(0xFF6F6656),
     accentSoft: Color(0xFFDCEEE9),
     brass: Color(0xFFA87A2E),
     brassSoft: Color(0xFFF2E4C6),
@@ -114,7 +114,7 @@ abstract final class DartisanSpacing {
 
 abstract final class DartisanRadii {
   static const s = 6.0;
-  static const m = 10.0;
+  static const m = 12.0;
   static const l = 16.0;
 }
 

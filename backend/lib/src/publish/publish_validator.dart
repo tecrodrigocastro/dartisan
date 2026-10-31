@@ -22,6 +22,8 @@ class PublishArtifact {
   });
 }
 
+final _packageNamePattern = RegExp(r'^[a-z_][a-z0-9_]*$');
+
 @Component()
 class PublishValidator {
   final PackageRepository _repository;
@@ -56,6 +58,15 @@ class PublishValidator {
     }
 
     final packageName = pubspec.name.value;
+    // O nome vira diretório no storage ({nome}/{versão}.tar.gz): sem essa
+    // validação, "../../x" escaparia da pasta de storage (path traversal).
+    if (!_packageNamePattern.hasMatch(packageName)) {
+      _fail(
+        'invalid_package_name',
+        '"$packageName" não é um nome de pacote válido — use apenas letras '
+            'minúsculas, números e underscore, sem começar por número',
+      );
+    }
     final versionString = pubspec.version.value;
 
     try {

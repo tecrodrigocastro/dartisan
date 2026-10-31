@@ -54,3 +54,8 @@ security:
 
 publish:
   max_tarball_size_bytes: 104857600  # 100 MiB, mesma ordem de grandeza do pub.dev
+
+# Admin inicial: defina as variáveis de ambiente ADMIN_USERNAME e
+# ADMIN_PASSWORD (não ficam neste arquivo). Na primeira requisição o usuário é
+# criado como admin (ou promovido, se já existir). Depois, o admin muda roles
+# em PUT /api/admin/users/{id}/role.

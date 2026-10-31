@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/http/api_base_url.dart';
 import '../../core/session/app_session.dart';
 import '../../core/session/session_state.dart';
 import '../../core/theme/tokens.dart';
@@ -143,20 +144,56 @@ class _LoadedView extends StatelessWidget {
     final mainColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text.rich(
+          TextSpan(
+            style: DartisanFonts.mono(fontSize: 13, color: colors.textFaint),
+            children: [
+              WidgetSpan(
+                alignment: PlaceholderAlignment.baseline,
+                baseline: TextBaseline.alphabetic,
+                child: InkWell(
+                  onTap: () => context.navigate('/'),
+                  child: Text('pacotes', style: DartisanFonts.mono(fontSize: 13, color: colors.textFaint)),
+                ),
+              ),
+              const TextSpan(text: ' / '),
+              TextSpan(text: metadata.name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+            ],
+          ),
+        ),
+        const SizedBox(height: DartisanSpacing.s4),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            Container(
+              width: 56,
+              height: 56,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.accentSoft,
+                borderRadius: BorderRadius.circular(DartisanRadii.m),
+              ),
+              child: Text(
+                metadata.name.isEmpty ? '?' : metadata.name[0].toUpperCase(),
+                style: DartisanFonts.mono(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(width: DartisanSpacing.s4),
             Expanded(
-              child: Text(metadata.name, style: Theme.of(context).textTheme.headlineMedium),
+              child: Text(
+                metadata.name,
+                style: DartisanFonts.mono(fontSize: 30, fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             _LikeButton(
               liked: state.likedByMe,
               count: metadata.likeCount,
               onTap: onToggleLike,
-            ),
-            IconButton(
-              tooltip: 'Copiar versão',
-              icon: const Icon(Icons.copy_outlined, size: 20),
-              onPressed: () => Clipboard.setData(ClipboardData(text: latest.version)),
             ),
           ],
         ),
@@ -166,7 +203,7 @@ class _LoadedView extends StatelessWidget {
           runSpacing: DartisanSpacing.s2,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            StatusPill(label: 'v${latest.version}', variant: StatusPillVariant.latest, icon: Icons.star),
+            StatusPill(label: 'v${latest.version} · mais recente', variant: StatusPillVariant.latest),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -192,9 +229,12 @@ class _LoadedView extends StatelessWidget {
           Text(description),
         ],
         const SizedBox(height: DartisanSpacing.s6),
-        Text('Versões', style: Theme.of(context).textTheme.titleLarge),
+        _InstallCard(name: metadata.name, version: latest.version),
+        const SizedBox(height: DartisanSpacing.s6),
+        Text('Versões', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: DartisanSpacing.s2),
         Card(
+          clipBehavior: Clip.antiAlias,
           child: Column(
             children: metadata.versions
                 .map((v) => _VersionTile(version: v, isLatest: v.version == latest.version))
@@ -202,7 +242,7 @@ class _LoadedView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: DartisanSpacing.s6),
-        Text('Metadados (pubspec.yaml)', style: Theme.of(context).textTheme.titleLarge),
+        Text('Metadados (pubspec.yaml)', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: DartisanSpacing.s2),
         Card(
           color: colors.codeBackground,
@@ -230,7 +270,7 @@ class _LoadedView extends StatelessWidget {
       padding: const EdgeInsets.all(DartisanSpacing.s5),
       children: [
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1100),
+          constraints: const BoxConstraints(maxWidth: 1200),
           child: Center(
             child: isWide
                 ? IntrinsicHeight(
@@ -439,10 +479,15 @@ class _VersionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return ListTile(
-      leading: isLatest
-          ? Icon(Icons.star, color: colors.brass)
-          : Icon(Icons.archive_outlined, color: colors.textFaint),
-      title: Text(version.version, style: DartisanFonts.mono(fontSize: 14, fontWeight: FontWeight.w700)),
+      title: Row(
+        children: [
+          Text(version.version, style: DartisanFonts.mono(fontSize: 14, fontWeight: FontWeight.w700)),
+          if (isLatest) ...[
+            const SizedBox(width: DartisanSpacing.s2),
+            const StatusPill(label: 'mais recente', variant: StatusPillVariant.latest),
+          ],
+        ],
+      ),
       subtitle: Text(
         'sha256: ${_truncatedSha256(version.archiveSha256)}',
         style: DartisanFonts.mono(fontSize: 12, color: colors.textFaint),
@@ -464,4 +509,81 @@ String _truncatedSha256(String sha256) {
   return sha256.length <= previewLength
       ? sha256
       : '${sha256.substring(0, previewLength)}…';
+}
+
+class _InstallCard extends StatelessWidget {
+  final String name;
+  final String version;
+  const _InstallCard({required this.name, required this.version});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final primary = Theme.of(context).colorScheme.primary;
+    final command = 'dart pub add $name --hosted-url=$apiBaseUrl';
+    final yaml = 'dependencies:\n  $name:\n    hosted: $apiBaseUrl\n    version: ^$version';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(DartisanSpacing.s4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Instalar', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: DartisanSpacing.s3),
+            _CodeLine(
+              text: command,
+              prefix: TextSpan(text: '\$ ', style: TextStyle(color: primary)),
+              copyTooltip: 'Copiar comando',
+            ),
+            const SizedBox(height: DartisanSpacing.s3),
+            Text('ou no pubspec.yaml', style: TextStyle(color: colors.textFaint, fontSize: 13)),
+            const SizedBox(height: DartisanSpacing.s2),
+            _CodeLine(text: yaml, copyTooltip: 'Copiar yaml'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CodeLine extends StatelessWidget {
+  final String text;
+  final TextSpan? prefix;
+  final String copyTooltip;
+  const _CodeLine({required this.text, required this.copyTooltip, this.prefix});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.only(left: DartisanSpacing.s4, top: 4, bottom: 4, right: 4),
+      decoration: BoxDecoration(
+        color: colors.codeBackground,
+        borderRadius: BorderRadius.circular(DartisanRadii.m - 2),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: DartisanSpacing.s2),
+              child: SelectableText.rich(
+                TextSpan(
+                  style: DartisanFonts.mono(fontSize: 13, height: 1.7),
+                  children: [if (prefix != null) prefix!, TextSpan(text: text)],
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: copyTooltip,
+            icon: const Icon(Icons.copy_outlined, size: 18),
+            onPressed: () => Clipboard.setData(ClipboardData(text: text)),
+          ),
+        ],
+      ),
+    );
+  }
 }

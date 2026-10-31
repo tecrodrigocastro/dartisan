@@ -189,6 +189,20 @@ void main() {
       );
     });
 
+    test('rejeita nome de pacote com path traversal ou caracteres inválidos', () async {
+      for (final name in ['../../etc', 'a/b', 'Meu_Pacote', '1pacote', 'a-b', 'a b']) {
+        final tarball = buildTarball({
+          'pubspec.yaml': 'name: "$name"\nversion: 1.0.0\n',
+        });
+
+        await expectLater(
+          () => validator.validate(tarballBytes: tarball, maxSizeBytes: 1000000),
+          throwsA(isA<ResponseException>().having((e) => e.code, 'code', 400)),
+          reason: 'nome "$name" deveria ser rejeitado',
+        );
+      }
+    });
+
     test('aceita tarball válido e calcula o sha256', () async {
       final tarball = buildTarball({'pubspec.yaml': _validPubspec});
 

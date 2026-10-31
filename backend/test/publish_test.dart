@@ -107,6 +107,43 @@ class FakeUserRepository implements UserRepository {
     users.add(user);
     return user;
   }
+
+  @override
+  Future<User> createPasswordUser({
+    required String username,
+    required String passwordHash,
+    required String role,
+  }) async {
+    final user = User(
+      id: users.length + 1,
+      username: username,
+      passwordHash: passwordHash,
+      role: role,
+      createdAt: DateTime.now(),
+      githubId: null,
+    );
+    users.add(user);
+    return user;
+  }
+
+  @override
+  Future<List<User>> listAll() async => List.of(users);
+
+  @override
+  Future<bool> updateRole(int id, String role) async {
+    final i = users.indexWhere((u) => u.id == id);
+    if (i < 0) return false;
+    final u = users[i];
+    users[i] = User(
+      id: u.id,
+      username: u.username,
+      passwordHash: u.passwordHash,
+      role: role,
+      createdAt: u.createdAt,
+      githubId: u.githubId,
+    );
+    return true;
+  }
 }
 
 void main() {

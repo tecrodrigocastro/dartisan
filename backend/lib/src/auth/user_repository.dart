@@ -15,6 +15,19 @@ abstract class UserRepository {
     required String username,
     required String role,
   });
+
+  /// Conta local (usuário + senha), com [passwordHash] já gerado pelo
+  /// `PasswordEncoder` — usada pelo bootstrap do admin inicial.
+  Future<User> createPasswordUser({
+    required String username,
+    required String passwordHash,
+    required String role,
+  });
+
+  Future<List<User>> listAll();
+
+  /// Retorna `false` se o usuário não existe.
+  Future<bool> updateRole(int id, String role);
 }
 
 @Repository()
@@ -57,5 +70,36 @@ class DriftUserRepository implements UserRepository {
           ),
         );
     return (await findById(id))!;
+  }
+
+  @override
+  Future<User> createPasswordUser({
+    required String username,
+    required String passwordHash,
+    required String role,
+  }) async {
+    final id = await _db
+        .into(_db.users)
+        .insert(
+          UsersCompanion.insert(
+            username: username,
+            role: role,
+            passwordHash: Value(passwordHash),
+          ),
+        );
+    return (await findById(id))!;
+  }
+
+  @override
+  Future<List<User>> listAll() {
+    return (_db.select(_db.users)..orderBy([(u) => OrderingTerm.asc(u.id)]))
+        .get();
+  }
+
+  @override
+  Future<bool> updateRole(int id, String role) async {
+    final updated = await (_db.update(_db.users)..where((u) => u.id.equals(id)))
+        .write(UsersCompanion(role: Value(role)));
+    return updated > 0;
   }
 }

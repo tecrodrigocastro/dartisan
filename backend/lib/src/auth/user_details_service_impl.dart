@@ -1,6 +1,7 @@
 import 'package:vaden/vaden.dart';
 import 'package:vaden_security/vaden_security.dart';
 
+import 'admin_bootstrap.dart';
 import 'app_user_details.dart';
 import 'user_repository.dart';
 
@@ -12,11 +13,13 @@ import 'user_repository.dart';
 @Service()
 class UserDetailsServiceImpl implements UserDetailsService {
   final UserRepository _repository;
+  final AdminBootstrap _adminBootstrap;
 
-  UserDetailsServiceImpl(this._repository);
+  UserDetailsServiceImpl(this._repository, this._adminBootstrap);
 
   @override
   Future<UserDetails?> loadUserByUsername(String username) async {
+    await _adminBootstrap.ensure();
     final user = await _repository.findByUsername(username);
     if (user == null) return null;
 

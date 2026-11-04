@@ -5,6 +5,14 @@ import 'package:vaden/vaden.dart';
 abstract class PackageStorage {
   Future<Stream<List<int>>> read(String path);
   Future<void> write(String path, Stream<List<int>> data);
+
+  /// Move [from] para [to] (sobrescrevendo). No storage local é um `rename`,
+  /// atômico no mesmo volume — usado para publicar o tarball só depois do
+  /// insert no banco.
+  Future<void> move(String from, String to);
+
+  /// Remove [path]; não falha se o arquivo não existir.
+  Future<void> delete(String path);
 }
 
 // Só o provider `local` é implementado por enquanto (s3/firebase ficam para
@@ -47,5 +55,21 @@ class LocalPackageStorage implements PackageStorage {
     final sink = file.openWrite();
     await sink.addStream(data);
     await sink.close();
+  }
+
+  @override
+  Future<void> move(String from, String to) async {
+    final source = _resolve(from);
+    final target = _resolve(to);
+    await target.parent.create(recursive: true);
+    await source.rename(target.path);
+  }
+
+  @override
+  Future<void> delete(String path) async {
+    final file = _resolve(path);
+    if (await file.exists()) {
+      await file.delete();
+    }
   }
 }

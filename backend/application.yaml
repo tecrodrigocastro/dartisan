@@ -35,7 +35,7 @@ env:
   # URL do frontend (Flutter Web) — usada só pra redirecionar de volta depois
   # do callback do login GitHub, o backend não serve esses arquivos.
   frontend_url: http://localhost:5050
-  mode: debug
+  mode: debug  # fora de 'debug' o app NÃO sobe com security.secret/postgres.password padrão
 
 security:
   secret: 'troque-este-segredo-em-producao'  # via env var em produção

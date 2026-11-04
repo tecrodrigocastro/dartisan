@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data' show BytesBuilder;
 
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
@@ -22,6 +24,13 @@ class PublishArtifact {
   });
 }
 
+/// Mesmo teto do pub.dev para o conteúdo descompactado (256 MiB).
+const defaultMaxUncompressedBytes = 256 * 1024 * 1024;
+
+class _ArchiveTooLarge implements Exception {
+  const _ArchiveTooLarge();
+}
+
 final _packageNamePattern = RegExp(r'^[a-z_][a-z0-9_]*$');
 
 @Component()
@@ -33,6 +42,9 @@ class PublishValidator {
   Future<PublishArtifact> validate({
     required List<int> tarballBytes,
     required int maxSizeBytes,
+    required int actorUserId,
+    required String actorRole,
+    int maxUncompressedBytes = defaultMaxUncompressedBytes,
   }) async {
     if (tarballBytes.length > maxSizeBytes) {
       _fail(
@@ -41,7 +53,10 @@ class PublishValidator {
       );
     }
 
-    final pubspecYaml = _extractPubspecYaml(tarballBytes);
+    final pubspecYaml = await _extractPubspecYaml(
+      tarballBytes,
+      maxUncompressedBytes,
+    );
 
     final PubSpec pubspec;
     try {
@@ -75,6 +90,21 @@ class PublishValidator {
       _fail('invalid_version', '"$versionString" não é um semver válido');
     }
 
+    // Só o dono (quem publicou a primeira versão) ou um admin publica novas
+    // versões de um pacote existente.
+    if (actorRole != 'admin' &&
+        await _repository.findByName(packageName) != null) {
+      final owner = await _repository.findOwnerUserId(packageName);
+      if (owner != actorUserId) {
+        throw ResponseException(403, {
+          'error': {
+            'code': 'not_package_owner',
+            'message': 'Você não é dono do pacote $packageName',
+          },
+        });
+      }
+    }
+
     final existing = await _repository.findVersion(packageName, versionString);
     if (existing != null) {
       _fail(
@@ -92,13 +122,51 @@ class PublishValidator {
     );
   }
 
-  String _extractPubspecYaml(List<int> tarballBytes) {
-    final Archive archive;
+  Future<String> _extractPubspecYaml(
+    List<int> tarballBytes,
+    int maxUncompressedBytes,
+  ) async {
+    // Descompacta em streaming com teto: um .tar.gz pequeno pode expandir
+    // para gigabytes (zip bomb), então não dá pra usar decodeBytes direto.
+    final tarBytes = BytesBuilder(copy: false);
     try {
-      final tarBytes = GZipDecoder().decodeBytes(tarballBytes);
-      archive = TarDecoder().decodeBytes(tarBytes);
+      await for (final chunk in gzip.decoder.bind(Stream.value(tarballBytes))) {
+        tarBytes.add(chunk);
+        if (tarBytes.length > maxUncompressedBytes) {
+          throw const _ArchiveTooLarge();
+        }
+      }
+    } on _ArchiveTooLarge {
+      _fail(
+        'archive_too_large',
+        'Conteúdo descompactado excede o limite de $maxUncompressedBytes bytes',
+      );
     } catch (_) {
       _fail('invalid_archive', 'Não foi possível ler o tarball (.tar.gz)');
+    }
+
+    final Archive archive;
+    try {
+      archive = TarDecoder().decodeBytes(tarBytes.takeBytes());
+    } catch (_) {
+      _fail('invalid_archive', 'Não foi possível ler o tarball (.tar.gz)');
+    }
+
+    for (final entry in archive) {
+      final name = entry.name;
+      final unsafe =
+          name.startsWith('/') ||
+          name.contains('\\') ||
+          name.split('/').any((segment) => segment == '..');
+      if (unsafe) {
+        _fail('unsafe_archive_entry', 'Entrada inválida no tarball: "$name"');
+      }
+      if (entry.isSymbolicLink) {
+        _fail(
+          'unsafe_archive_entry',
+          'Tarball não pode conter links simbólicos: "$name"',
+        );
+      }
     }
 
     final pubspecFile = archive.findFile('pubspec.yaml');

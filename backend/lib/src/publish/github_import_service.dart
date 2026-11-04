@@ -70,6 +70,8 @@ class GithubImportService {
     final artifact = await _validator.validate(
       tarballBytes: tarballBytes,
       maxSizeBytes: maxSizeBytes,
+      actorUserId: user.id,
+      actorRole: user.role,
     );
 
     await _publishService.persistArtifact(

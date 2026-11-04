@@ -160,7 +160,7 @@ void main() {
       final tarball = buildTarball({'pubspec.yaml': _validPubspec});
 
       await expectLater(
-        () => validator.validate(tarballBytes: tarball, maxSizeBytes: 1),
+        () => validator.validate(actorUserId: 1, actorRole: 'admin', tarballBytes: tarball, maxSizeBytes: 1),
         throwsA(isA<ResponseException>().having((e) => e.code, 'code', 400)),
       );
     });
@@ -169,7 +169,7 @@ void main() {
       final tarball = buildTarball({'README.md': 'oi'});
 
       await expectLater(
-        () => validator.validate(
+        () => validator.validate(actorUserId: 1, actorRole: 'admin', 
           tarballBytes: tarball,
           maxSizeBytes: 1000000,
         ),
@@ -181,7 +181,7 @@ void main() {
       final tarball = buildTarball({'pubspec.yaml': 'name: meu_pacote\n'});
 
       await expectLater(
-        () => validator.validate(
+        () => validator.validate(actorUserId: 1, actorRole: 'admin', 
           tarballBytes: tarball,
           maxSizeBytes: 1000000,
         ),
@@ -195,7 +195,7 @@ void main() {
       });
 
       await expectLater(
-        () => validator.validate(
+        () => validator.validate(actorUserId: 1, actorRole: 'admin', 
           tarballBytes: tarball,
           maxSizeBytes: 1000000,
         ),
@@ -218,7 +218,7 @@ void main() {
       final tarball = buildTarball({'pubspec.yaml': _validPubspec});
 
       await expectLater(
-        () => validator.validate(
+        () => validator.validate(actorUserId: 1, actorRole: 'admin', 
           tarballBytes: tarball,
           maxSizeBytes: 1000000,
         ),
@@ -233,17 +233,121 @@ void main() {
         });
 
         await expectLater(
-          () => validator.validate(tarballBytes: tarball, maxSizeBytes: 1000000),
+          () => validator.validate(actorUserId: 1, actorRole: 'admin', tarballBytes: tarball, maxSizeBytes: 1000000),
           throwsA(isA<ResponseException>().having((e) => e.code, 'code', 400)),
           reason: 'nome "$name" deveria ser rejeitado',
         );
       }
     });
 
+    group('dono do pacote', () {
+      void seedPackage({int? uploaderUserId}) {
+        packages.package = Package(
+          name: 'meu_pacote',
+          createdAt: DateTime.now(),
+          latestVersion: '0.9.0',
+        );
+        packages.versions = [
+          PackageVersion(
+            id: 1,
+            packageName: 'meu_pacote',
+            version: '0.9.0',
+            pubspecYaml: 'name: meu_pacote\nversion: 0.9.0\n',
+            archiveSha256: 'x',
+            archivePath: 'meu_pacote/0.9.0.tar.gz',
+            uploadedAt: DateTime.now(),
+            uploaderUserId: uploaderUserId,
+          ),
+        ];
+      }
+
+      Future<PublishArtifact> publishAs(int userId, String role) {
+        return validator.validate(
+          tarballBytes: buildTarball({'pubspec.yaml': _validPubspec}),
+          maxSizeBytes: 1000000,
+          actorUserId: userId,
+          actorRole: role,
+        );
+      }
+
+      test('publisher que não é dono recebe 403', () async {
+        seedPackage(uploaderUserId: 7);
+        await expectLater(
+          () => publishAs(8, 'publisher'),
+          throwsA(isA<ResponseException>().having((e) => e.code, 'code', 403)),
+        );
+      });
+
+      test('dono publica nova versão', () async {
+        seedPackage(uploaderUserId: 7);
+        final artifact = await publishAs(7, 'publisher');
+        expect(artifact.packageName, 'meu_pacote');
+      });
+
+      test('admin publica em pacote de outro', () async {
+        seedPackage(uploaderUserId: 7);
+        final artifact = await publishAs(99, 'admin');
+        expect(artifact.version, '1.0.0');
+      });
+
+      test('pacote sem dono conhecido só aceita admin', () async {
+        seedPackage();
+        await expectLater(
+          () => publishAs(7, 'publisher'),
+          throwsA(isA<ResponseException>().having((e) => e.code, 'code', 403)),
+        );
+        expect((await publishAs(1, 'admin')).version, '1.0.0');
+      });
+
+      test('qualquer publisher cria pacote novo', () async {
+        final artifact = await publishAs(8, 'publisher');
+        expect(artifact.packageName, 'meu_pacote');
+      });
+    });
+
+    test('rejeita entradas com .. ou caminho absoluto no tarball', () async {
+      for (final entry in ['../fora.txt', '/etc/passwd', 'lib/../../x']) {
+        final tarball = buildTarball({
+          'pubspec.yaml': _validPubspec,
+          entry: 'x',
+        });
+        await expectLater(
+          () => validator.validate(
+            actorUserId: 1,
+            actorRole: 'admin',
+            tarballBytes: tarball,
+            maxSizeBytes: 1000000,
+          ),
+          throwsA(isA<ResponseException>().having((e) => e.code, 'code', 400)),
+          reason: 'entrada "$entry" deveria ser rejeitada',
+        );
+      }
+    });
+
+    test('rejeita conteúdo descompactado acima do limite (zip bomb)', () async {
+      // 5 MiB de zeros comprimem para poucos KiB, mas estouram o teto de 1 KiB.
+      final tarball = buildTarball({
+        'pubspec.yaml': _validPubspec,
+        'lixo.bin': '\u0000' * (5 * 1024 * 1024),
+      });
+      expect(tarball.length, lessThan(100 * 1024));
+
+      await expectLater(
+        () => validator.validate(
+          actorUserId: 1,
+          actorRole: 'admin',
+          tarballBytes: tarball,
+          maxSizeBytes: 1000000,
+          maxUncompressedBytes: 1024,
+        ),
+        throwsA(isA<ResponseException>().having((e) => e.code, 'code', 400)),
+      );
+    });
+
     test('aceita tarball válido e calcula o sha256', () async {
       final tarball = buildTarball({'pubspec.yaml': _validPubspec});
 
-      final artifact = await validator.validate(
+      final artifact = await validator.validate(actorUserId: 1, actorRole: 'admin', 
         tarballBytes: tarball,
         maxSizeBytes: 1000000,
       );
@@ -399,6 +503,7 @@ void main() {
           archiveSha256: 'x',
           archivePath: 'meu_pacote/2.0.0.tar.gz',
           uploadedAt: DateTime.now(),
+          uploaderUserId: 1,
         ),
       ];
 
@@ -415,10 +520,61 @@ void main() {
       expect(packages.versions.map((v) => v.version), containsAll(['2.0.0', '0.5.0']));
     });
 
-    test('persistArtifact grava uploaderUserId quando não há publish token (import GitHub)',
+    test('publicação concorrente da mesma versão devolve 409 e limpa o temporário',
+        () async {
+      final racing = _RacingPackageRepository();
+      final racingStorage = FakePackageStorage();
+      final racingService = PublishServiceImpl(
+        publishTokens,
+        users,
+        racing,
+        racingStorage,
+        PublishValidator(racing),
+        UploadSessionStore(),
+      );
+      final tarball = buildTarball({'pubspec.yaml': _validPubspec});
+      final artifact = await PublishValidator(racing).validate(
+        actorUserId: 1,
+        actorRole: 'publisher',
+        tarballBytes: tarball,
+        maxSizeBytes: 1000000,
+      );
+
+      await expectLater(
+        () => racingService.persistArtifact(
+          artifact: artifact,
+          tarballBytes: tarball,
+          uploaderUserId: 1,
+        ),
+        throwsA(isA<ResponseException>().having((e) => e.code, 'code', 409)),
+      );
+      // Nenhum arquivo sobra (nem o temporário, nem o final do vencedor).
+      expect(racingStorage.files, isEmpty);
+    });
+
+    test('persistArtifact só publica o tarball no caminho final após o insert',
         () async {
       final tarball = buildTarball({'pubspec.yaml': _validPubspec});
       final artifact = await PublishValidator(packages).validate(
+        actorUserId: 1,
+        actorRole: 'publisher',
+        tarballBytes: tarball,
+        maxSizeBytes: 1000000,
+      );
+
+      await service.persistArtifact(
+        artifact: artifact,
+        tarballBytes: tarball,
+        uploaderUserId: 1,
+      );
+
+      expect(storage.files.keys, ['meu_pacote/1.0.0.tar.gz']);
+    });
+
+    test('persistArtifact grava uploaderUserId quando não há publish token (import GitHub)',
+        () async {
+      final tarball = buildTarball({'pubspec.yaml': _validPubspec});
+      final artifact = await PublishValidator(packages).validate(actorUserId: 1, actorRole: 'admin', 
         tarballBytes: tarball,
         maxSizeBytes: 1000000,
       );
@@ -434,4 +590,33 @@ void main() {
       expect(saved.uploaderTokenId, isNull);
     });
   });
+}
+
+/// Simula a corrida: no momento do insert outra publicação já gravou a mesma
+/// versão (a unique estoura).
+class _RacingPackageRepository extends FakePackageRepository {
+  @override
+  Future<void> saveNewVersion({
+    required String packageName,
+    required String version,
+    required String pubspecYaml,
+    required String archiveSha256,
+    required String archivePath,
+    required String latestVersion,
+    int? uploaderTokenId,
+    int? uploaderUserId,
+  }) async {
+    versions = [
+      PackageVersion(
+        id: 1,
+        packageName: packageName,
+        version: version,
+        pubspecYaml: pubspecYaml,
+        archiveSha256: 'do-vencedor',
+        archivePath: archivePath,
+        uploadedAt: DateTime.now(),
+      ),
+    ];
+    throw StateError('duplicate key value violates unique constraint');
+  }
 }

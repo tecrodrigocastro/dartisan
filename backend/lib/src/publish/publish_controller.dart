@@ -1,3 +1,5 @@
+import 'dart:typed_data' show BytesBuilder;
+
 import 'package:vaden/vaden.dart';
 
 import 'publish_service.dart';
@@ -59,7 +61,7 @@ class PublishController {
     List<int>? fileBytes;
     await for (final field in form.formData) {
       if (field.name == 'file') {
-        fileBytes = await field.part.readBytes();
+        fileBytes = await _readLimited(field.part, _maxTarballSizeBytes);
       }
     }
 
@@ -99,5 +101,24 @@ class PublishController {
     return {
       'success': {'message': 'Pacote publicado com sucesso'},
     };
+  }
+
+  /// Lê o upload com teto: aborta assim que passa de [maxBytes] em vez de
+  /// carregar um arquivo arbitrariamente grande inteiro em memória.
+  Future<List<int>> _readLimited(Stream<List<int>> stream, int maxBytes) async {
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in stream) {
+      builder.add(chunk);
+      if (builder.length > maxBytes) {
+        throw ResponseException.badRequest({
+          'error': {
+            'code': 'tarball_too_large',
+            'message':
+                'Tarball excede o tamanho máximo permitido ($maxBytes bytes)',
+          },
+        });
+      }
+    }
+    return builder.takeBytes();
   }
 }

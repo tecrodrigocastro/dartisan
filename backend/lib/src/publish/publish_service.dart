@@ -129,11 +129,19 @@ class PublishServiceImpl implements PublishService {
       });
     }
 
+    final actor = await _users.findById(session.userId);
+    if (actor == null) {
+      _sessions.remove(sessionId);
+      throw ResponseException.unauthorized(_invalidToken);
+    }
+
     final PublishArtifact artifact;
     try {
       artifact = await _validator.validate(
         tarballBytes: tarballBytes,
         maxSizeBytes: maxSizeBytes,
+        actorUserId: actor.id,
+        actorRole: actor.role,
       );
     } finally {
       // A sessão é de uso único, com sucesso ou erro de validação.
@@ -155,26 +163,54 @@ class PublishServiceImpl implements PublishService {
     int? uploaderUserId,
   }) async {
     final archivePath = '${artifact.packageName}/${artifact.version}.tar.gz';
-    await _storage.write(archivePath, Stream.value(tarballBytes));
+    // O tarball só vai para o caminho final depois do insert no banco: grava
+    // em um arquivo temporário, deixa a unique (package, version) decidir
+    // quem ganha numa publicação concorrente e então move (rename atômico).
+    final stagingPath =
+        '${artifact.packageName}/${artifact.version}.${TokenHasher.generateRawToken()}.part';
+    await _storage.write(stagingPath, Stream.value(tarballBytes));
 
-    final existingVersions = await _packages.findVersions(
-      artifact.packageName,
-    );
-    final allVersions = [
-      ...existingVersions.map((v) => v.version),
-      artifact.version,
-    ];
+    try {
+      final existingVersions = await _packages.findVersions(
+        artifact.packageName,
+      );
+      final allVersions = [
+        ...existingVersions.map((v) => v.version),
+        artifact.version,
+      ];
 
-    await _packages.saveNewVersion(
-      packageName: artifact.packageName,
-      version: artifact.version,
-      pubspecYaml: artifact.pubspecYaml,
-      archiveSha256: artifact.archiveSha256,
-      archivePath: archivePath,
-      latestVersion: pickLatestVersion(sortVersions(allVersions)),
-      uploaderTokenId: uploaderTokenId,
-      uploaderUserId: uploaderUserId,
-    );
+      await _packages.saveNewVersion(
+        packageName: artifact.packageName,
+        version: artifact.version,
+        pubspecYaml: artifact.pubspecYaml,
+        archiveSha256: artifact.archiveSha256,
+        archivePath: archivePath,
+        latestVersion: pickLatestVersion(sortVersions(allVersions)),
+        uploaderTokenId: uploaderTokenId,
+        uploaderUserId: uploaderUserId,
+      );
+    } catch (_) {
+      try {
+        await _storage.delete(stagingPath);
+      } catch (_) {}
+
+      // Insert falhou: se a versão existe agora, outra publicação ganhou a
+      // corrida (a unique estourou) — devolve o erro de domínio, não um 500.
+      if (await _packages.findVersion(artifact.packageName, artifact.version) !=
+          null) {
+        throw ResponseException(409, {
+          'error': {
+            'code': 'version_exists',
+            'message':
+                'Versão ${artifact.version} de ${artifact.packageName} já foi '
+                'publicada — pacotes são imutáveis por versão',
+          },
+        });
+      }
+      rethrow;
+    }
+
+    await _storage.move(stagingPath, archivePath);
   }
 
   UploadSession _requireSession(String sessionId) {

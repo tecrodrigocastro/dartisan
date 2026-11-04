@@ -16,6 +16,12 @@ abstract class PackageRepository {
 
   Future<PackageVersion?> findVersion(String packageName, String version);
 
+  /// Dono do pacote = quem publicou a versão mais antiga (via
+  /// `uploaderUserId` ou, para publish via CLI, o usuário dono do publish
+  /// token). `null` se o pacote não existe ou se não dá pra saber (dados
+  /// antigos sem uploader) — nesse caso só um admin pode publicar nele.
+  Future<int?> findOwnerUserId(String packageName);
+
   /// Pacotes distintos com pelo menos uma versão enviada por [userId] — via
   /// PackageVersions.uploaderTokenId -> PublishTokens.userId.
   Future<List<Package>> findPackagesUploadedByUser(int userId);
@@ -109,6 +115,28 @@ class DriftPackageRepository implements PackageRepository {
           (v) => v.packageName.equals(packageName) & v.version.equals(version),
         ))
         .getSingleOrNull();
+  }
+
+  @override
+  Future<int?> findOwnerUserId(String packageName) async {
+    final query =
+        _db.select(_db.packageVersions).join([
+            leftOuterJoin(
+              _db.publishTokens,
+              _db.publishTokens.id.equalsExp(
+                _db.packageVersions.uploaderTokenId,
+              ),
+            ),
+          ])
+          ..where(_db.packageVersions.packageName.equals(packageName))
+          ..orderBy([OrderingTerm.asc(_db.packageVersions.id)])
+          ..limit(1);
+
+    final row = await query.getSingleOrNull();
+    if (row == null) return null;
+
+    return row.readTable(_db.packageVersions).uploaderUserId ??
+        row.readTableOrNull(_db.publishTokens)?.userId;
   }
 
   @override

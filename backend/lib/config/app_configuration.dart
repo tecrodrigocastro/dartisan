@@ -1,10 +1,18 @@
 import 'package:vaden/vaden.dart';
 
+import 'settings_guard.dart';
+
 @Configuration()
 class AppConfiguration {
   @Bean()
   ApplicationSettings settings() {
-    return ApplicationSettings.load('application.yaml');
+    final settings = ApplicationSettings.load('application.yaml');
+    assertSafeSettings(
+      mode: settings['env']['mode'] as String,
+      securitySecret: settings['security']['secret'] as String,
+      postgresPassword: settings['postgres']['password'] as String,
+    );
+    return settings;
   }
 
   @Bean()

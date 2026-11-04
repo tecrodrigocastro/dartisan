@@ -28,6 +28,19 @@ class FakePackageRepository implements PackageRepository {
     return null;
   }
 
+  /// Sobrescreva para simular um dono explícito; por padrão é o uploader da
+  /// versão mais antiga (igual ao repositório real, sem o caso do token).
+  int? ownerUserId;
+
+  @override
+  Future<int?> findOwnerUserId(String packageName) async {
+    if (ownerUserId != null) return ownerUserId;
+    for (final v in versions) {
+      if (v.packageName == packageName) return v.uploaderUserId;
+    }
+    return null;
+  }
+
   @override
   Future<List<(PackageVersion, String?)>> findVersionsWithUploader(
     String packageName,
@@ -137,6 +150,16 @@ class FakePackageStorage implements PackageStorage {
   @override
   Future<void> write(String path, Stream<List<int>> data) async {
     files[path] = await data.expand((chunk) => chunk).toList();
+  }
+
+  @override
+  Future<void> move(String from, String to) async {
+    files[to] = files.remove(from)!;
+  }
+
+  @override
+  Future<void> delete(String path) async {
+    files.remove(path);
   }
 }
 
